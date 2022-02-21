@@ -123,8 +123,10 @@ of this kernel doesn't matter as long as it is sufficiently slowly varying compa
 We use $h=1.5$ pixels which is sufficient for a typical ground-based survey.
 
 \textbf{WCS Handling} We require that the PSF and the image have the same WCS Jacobian
-and that this Jacobian is constant across the image. We do correct for overall shifts in the
-centers of the image and the PSF though.
+and that this Jacobian is constant across the image. We remove the WCS by mapping pixel locations
+in Fourier-space to the Fourier-space WCS tangent plane before computing the moments kernels.
+We correct for overall shifts in the centers of the image and the PSF though phase factors applied
+in Fourier image pixel space.
 
 \textbf{PSF Deconvolution} We deconvolve the PSF in Fourier-space. In order to avoid dividing by
 zero, we truncate the PSF to $10^{-5}$ of its maximum Fourier amplitude. Truncated values in Fourier-space
