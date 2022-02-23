@@ -230,7 +230,7 @@ def _meas(gal, psf, nse, aps, seed):
 
 
 def main():
-    n_per_chunk = 100
+    n_per_chunk = 1000
     n_chunks = 1
     seed = np.random.randint(low=1, high=2**29)
     rng = np.random.RandomState(seed=seed)
