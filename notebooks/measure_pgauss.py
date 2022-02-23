@@ -243,14 +243,20 @@ def main():
     outputs = []
     with joblib.Parallel(n_jobs=4, verbose=10, batch_size=2) as par:
         for chunk in tqdm.trange(n_chunks):
-            jobs = []
             for i in range(n_per_chunk):
                 gal, psf = get_gal_wldeblend(rng=rng, data=wldeblend_data)
-                jobs.append(joblib.delayed(_meas)(
-                    gal, psf, wldeblend_data.noise, aps, rng.randint(low=1, high=2**29))
-                )
+                outputs.append(_meas(
+                    gal, psf, wldeblend_data.noise, aps, rng.randint(low=1, high=2**29)
+                ))
 
-            outputs.extend(par(jobs))
+            # jobs = []
+            # for i in range(n_per_chunk):
+            #     gal, psf = get_gal_wldeblend(rng=rng, data=wldeblend_data)
+            #     jobs.append(joblib.delayed(_meas)(
+            #         gal, psf, wldeblend_data.noise, aps, rng.randint(low=1, high=2**29))
+            #     )
+            #
+            # outputs.extend(par(jobs))
 
             d = np.zeros(len(outputs), dtype=[
                 ("s2n", "f4", (len(aps),)),
