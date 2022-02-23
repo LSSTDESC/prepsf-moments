@@ -241,7 +241,7 @@ def main():
 
     aps = np.linspace(1.25, 2.75, 25)
     outputs = []
-    with joblib.Parallel(n_jobs=-1, verbose=10, batch_size=2) as par:
+    with joblib.Parallel(n_jobs=4, verbose=10, batch_size=2) as par:
         for chunk in tqdm.trange(n_chunks):
             jobs = []
             for i in range(n_per_chunk):
