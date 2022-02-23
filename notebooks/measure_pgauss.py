@@ -177,13 +177,13 @@ def get_gal_wldeblend(*, rng, data):
 def _make_obs(gal, psf, nse, rng, n=101):
     im = galsim.Convolve([gal, psf]).drawImage(
         nx=n, ny=n, scale=0.2,
-    ).array.astype(np.float32)
-    psf_im = psf.drawImage(nx=n, ny=n, scale=0.2).array.astype(np.float32)
+    ).array.astype("f4")
+    psf_im = psf.drawImage(nx=n, ny=n, scale=0.2).array.astype("f4")
     cen = (n-1)/2
 
     im += rng.normal(size=im.shape, scale=nse)
 
-    im = im.astype(np.float32)
+    im = im.astype("f4")
 
     obs = ngmix.Observation(
         image=im,
