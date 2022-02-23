@@ -183,6 +183,8 @@ def _make_obs(gal, psf, nse, rng, n=101):
 
     im += rng.normal(size=im.shape, scale=nse)
 
+    im = im.astype(np.float32)
+
     obs = ngmix.Observation(
         image=im,
         weight=np.ones_like(im)/nse**2,
