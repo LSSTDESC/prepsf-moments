@@ -177,8 +177,9 @@ def get_gal_wldeblend(*, rng, data):
 
 
 def _make_obs(gal, psf, nse, rng, n=101):
+    xoff, yoff = rng.uniform(size=2, low=-0.5, high=0.5)
     im = galsim.Convolve([gal, psf]).drawImage(
-        nx=n, ny=n, scale=0.2,
+        nx=n, ny=n, scale=0.2, offset=(xoff, yoff),
     ).array
     psf_im = psf.drawImage(nx=n, ny=n, scale=0.2).array
     cen = (n-1)/2
@@ -188,7 +189,7 @@ def _make_obs(gal, psf, nse, rng, n=101):
     obs = ngmix.Observation(
         image=_im,
         weight=np.ones_like(im)/nse**2,
-        jacobian=ngmix.DiagonalJacobian(scale=0.2, row=cen, col=cen),
+        jacobian=ngmix.DiagonalJacobian(scale=0.2, row=cen+yoff, col=cen+xoff),
         psf=ngmix.Observation(
             image=psf_im,
             weight=np.ones_like(im),
@@ -199,7 +200,7 @@ def _make_obs(gal, psf, nse, rng, n=101):
     obs_nn = ngmix.Observation(
         image=im,
         weight=np.ones_like(im)/nse**2,
-        jacobian=ngmix.DiagonalJacobian(scale=0.2, row=cen, col=cen),
+        jacobian=ngmix.DiagonalJacobian(scale=0.2, row=cen+yoff, col=cen+xoff),
         psf=ngmix.Observation(
             image=psf_im,
             weight=np.ones_like(im),
