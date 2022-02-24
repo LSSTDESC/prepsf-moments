@@ -172,6 +172,7 @@ def get_gal_wldeblend(*, rng, data):
             for band in range(len(data.builders))
         ]),
         galsim.Kolmogorov(fwhm=data.psf_fwhm),
+        data.cat["redshift"][rind],
     )
 
 
@@ -197,7 +198,7 @@ def _make_obs(gal, psf, nse, rng, n=101):
     return obs
 
 
-def _meas(gal, psf, nse, aps, seed):
+def _meas(gal, psf, redshift, nse, aps, seed):
     rng = np.random.RandomState(seed=seed)
     obs = _make_obs(
         gal,
@@ -212,6 +213,7 @@ def _meas(gal, psf, nse, aps, seed):
     trs = []
     flags = []
     g1errs = []
+    redshifts = []
     for ap in aps:
         mom = PGaussMom(ap).go(obs)
         psf_mom = PGaussMom(ap).go(obs.psf, no_psf=True)
@@ -226,8 +228,9 @@ def _meas(gal, psf, nse, aps, seed):
         g1errs.append(mom["e_err"][0])
         ts.append(mom["T"])
         trs.append(mom["T"]/psf_mom_t)
+        redshifts.append(redshift)
 
-    return s2ns, g1s, flags, ts, trs, g1errs
+    return s2ns, g1s, flags, ts, trs, g1errs, redshifts
 
 
 def main():
@@ -246,17 +249,17 @@ def main():
         for chunk in tqdm.trange(n_chunks):
             if False:
                 for i in tqdm.trange(n_per_chunk):
-                    gal, psf = get_gal_wldeblend(rng=rng, data=wldeblend_data)
+                    gal, psf, redshift = get_gal_wldeblend(rng=rng, data=wldeblend_data)
                     outputs.append(_meas(
-                        gal, psf, wldeblend_data.noise,
+                        gal, psf, redshift, wldeblend_data.noise,
                         aps, rng.randint(low=1, high=2**29)
                     ))
             else:
                 jobs = []
                 for i in range(n_per_chunk):
-                    gal, psf = get_gal_wldeblend(rng=rng, data=wldeblend_data)
+                    gal, psf, redshift = get_gal_wldeblend(rng=rng, data=wldeblend_data)
                     jobs.append(joblib.delayed(_meas)(
-                        gal, psf, wldeblend_data.noise,
+                        gal, psf, redshift, wldeblend_data.noise,
                         aps, rng.randint(low=1, high=2**29))
                     )
 
@@ -268,7 +271,8 @@ def main():
                 ("T", "f4", (len(aps),)),
                 ("Tratio", "f4", (len(aps),)),
                 ("flags", "i4", (len(aps),)),
-                ("e1_err", "i4", (len(aps),))
+                ("e1_err", "i4", (len(aps),)),
+                ("redshift", "f4", (len(aps),)),
             ])
             _o = np.array(outputs)
             d["s2n"] = _o[:, 0]
@@ -277,6 +281,7 @@ def main():
             d["T"] = _o[:, 3]
             d["Tratio"] = _o[:, 4]
             d["e1_err"] = _o[:, 5]
+            d["redshift"] = _o[:, 6]
 
             fitsio.write(
                 "./results/meas_seed%d.fits" % seed,

@@ -20,7 +20,7 @@
 \newcommand{\sep}{\textsc{sep}\xspace}
 \newcommand{\ksigma}{\mbox{\boldmath $\mathrm{K}_{\sigma}$}\xspace}
 
-\shorttitle{Pre-PSF Moments}
+\shorttitle{Pre-PSF Moments for Weak Lensing Shear Measurement}
 \shortauthors{Becker, Sheldon, \& Rykoff}
 
 \begin{document}
@@ -89,8 +89,8 @@ is non-trivial and discussed below.
 
 \subsection{Implementation Details}
 
-We've had to handle several technical details on the implementation in order to get reliable
-results. We describe and address these things one-by-one here.
+We've had to handle several technical details on the implementation in order to get
+reliable and fast results. We describe and address these things one-by-one here.
 
 \textbf{Zero-padded FFTs} The FFTs used for implementing the steps above assume that
 the image is periodic. As this is never the case in real data, we zero-pad the FFTs by a
@@ -122,23 +122,27 @@ at zero at the edge of the image and goes to unity at $6h$ pixels inside the ima
 of this kernel doesn't matter as long as it is sufficiently slowly varying compared to the PSF.
 We use $h=1.5$ pixels which is sufficient for a typical ground-based survey.
 
+\textbf{PSF Deconvolution} We deconvolve the PSF in Fourier-space. In order to avoid dividing by
+zero, we truncate the PSF to $10^{-5}$ of its maximum Fourier amplitude. The estimators in this work
+become unstable if the moments aperture is too small in real-space and these Fourier modes are not truncated.
+
 \textbf{WCS Handling} We require that the PSF and the image have the same WCS Jacobian
 and that this Jacobian is constant across the image. We remove the WCS by mapping pixel locations
 in Fourier-space to the Fourier-space WCS tangent plane before computing the moments kernels.
 We correct for overall shifts in the centers of the image and the PSF though phase factors applied
-in Fourier image pixel space.
+in Fourier-space, but in image pixel coordinates.
 
-\textbf{PSF Deconvolution} We deconvolve the PSF in Fourier-space. In order to avoid dividing by
-zero, we truncate the PSF to $10^{-5}$ of its maximum Fourier amplitude. Truncated values in Fourier-space
-are ignored when summing to get the moments. The estimators in this work become unstable if the moments
-kernel is too small in real-space and so depends on these truncated modes.
+\textbf{Error Propagation} We compute the errors in our measurements by directly computing the
+covariance in Fourier-space. Due to the fact that all of the operations for computing the moments
+above are linear, we can do this operation analytically. As shown below, our reported errors are
+accurate to better than 1\% for isolated objects.
 
 \textbf{Efficiency} Our final implementation requires two FFTs, uses \texttt{numba} to compute the
 apodization masks, uses use a fast exponential implementation that is accurate to float precision,
-and takes advantage of the truncated pixels by ignoring them early on in the code.
-Overall, it runs at a speed of ${\cal O}(10s)$ of milliseconds per object depending on the stamp size.
-
-Our implementation is available in the \texttt{ngmix} software package.
+and takes advantage of Fourier-space modes that are set to zero by the moments weight function by ignoring
+them early on in the code. Overall, it runs at a speed of ${\cal O}(10s)$ of milliseconds per
+object depending on the stamp size \mrb{check this again}. Our implementation is available in the
+\texttt{ngmix} software package.
 
 \section{Simulations}
 
@@ -150,13 +154,51 @@ compact Fourier-space filters to future work.
 
 \subsection{Optimal Gaussian Aperture for an LSST-like Survey}
 
-\begin{figure}
-    \includegraphics[width=\columnwidth]{figures/optap.png}
+We start by determining the optimal measurement aperture. For this task, we simulate
+isolated objects in an LSST-like $r$-band image using the \texttt{WeakLensingDeblending}
+package \mrb{cite}. We then compute our moments statistics for a range of apertures between 1.25''
+to 2.75''. For each aperture, we employ a set of cuts on the objects that mimics a typical weak lensing
+sample selection using \mdet. These cuts are
+\begin{eqnarray}
+& {\rm flags} = 0 & \nonumber \\
+& {\rm flux\ S/N} > 10 & \nonumber \\
+& {\rm T/T_{psf}} > 0.5 & \nonumber
+\end{eqnarray}
+We then compute an inverse variance weight per object as
+\begin{equation}
+w = \frac{1}{\Delta e^2 + \sigma_e^2}
+\end{equation}
+where $\sigma_e$ is the raw shape noise of the sample with cuts applied and $\Delta e$ is
+the pixel noise induced error on the shape measurement. Finally, we compute a set of
+weak lensing sample statistics including the total sample size with cuts,
+the effective number density
+\begin{equation}
+n_{\rm eff} = \frac{\left(\sum w\right)^2}{\sum w^2}\ ,
+\end{equation}
+the effective shape noise
+\begin{equation}
+\sigma_{e,{\rm eff}}^2 = \frac{\sum (we)^2}{\left(\sum w\right)^2}\ ,
+\end{equation}
+and overall total shear variance $\sigma_{e,{\rm eff}}^2/n_{\rm eff}$.
 
-    \caption{Optimal Apertures for pre-PSF Gaussian Moments. \mrb{DES currently - update to LSST}
-    \label{fig:opap}}
+We show the results of these computations in Figure~\ref{fig:opap}. We find that the
+minimal total shear variance is achieved with an aperture of 1.5'' FWHM (bottom-right panel).
+In the top-left panel, we show the raw sample size scaled relative to the sample
+size at the optimal aperture. We show the effective shape noise and median flux S/N of
+the selected sample also scaled relative to optimal aperture in the top-right and
+bottom-left panels respectively. As expected, the optimal sample is a trade off between
+larger apertures which increase the sample size and smaller apertures which decrease
+the shape noise. We find that the median S/N of the sample has a fairly broad peak
+around the optimal aperture.
 
-\end{figure}
+\begin{figure*}
+  \centering
+  \includegraphics[width=2\columnwidth]{figures/optap.pdf}
+
+  \caption{Optimal Apertures for pre-PSF Gaussian Moments.
+  \label{fig:opap}}
+
+\end{figure*}
 
 
 \subsection{Error Properties for Isolated Objects}
