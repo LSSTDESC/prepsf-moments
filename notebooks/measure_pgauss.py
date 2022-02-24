@@ -2,6 +2,7 @@ import os
 import logging
 import functools
 import collections
+import sys
 
 import ngmix
 import numpy as np
@@ -183,8 +184,6 @@ def _make_obs(gal, psf, nse, rng, n=101):
 
     im += rng.normal(size=im.shape, scale=nse)
 
-    print(im.dtype)
-
     obs = ngmix.Observation(
         image=im,
         weight=np.ones_like(im)/nse**2,
@@ -232,8 +231,8 @@ def _meas(gal, psf, nse, aps, seed):
 
 
 def main():
-    n_per_chunk = 1000
-    n_chunks = 1
+    n_per_chunk = 100
+    n_chunks = int(sys.argv[1]) if len(sys.argv) > 1 else 1
     seed = np.random.randint(low=1, high=2**29)
     rng = np.random.RandomState(seed=seed)
 
@@ -243,22 +242,25 @@ def main():
 
     aps = np.linspace(1.25, 2.75, 25)
     outputs = []
-    with joblib.Parallel(n_jobs=4, verbose=10, batch_size=2) as par:
+    with joblib.Parallel(n_jobs=-1, verbose=10, batch_size=2) as par:
         for chunk in tqdm.trange(n_chunks):
-            for i in tqdm.trange(n_per_chunk):
-                gal, psf = get_gal_wldeblend(rng=rng, data=wldeblend_data)
-                outputs.append(_meas(
-                    gal, psf, wldeblend_data.noise, aps, rng.randint(low=1, high=2**29)
-                ))
+            if False:
+                for i in tqdm.trange(n_per_chunk):
+                    gal, psf = get_gal_wldeblend(rng=rng, data=wldeblend_data)
+                    outputs.append(_meas(
+                        gal, psf, wldeblend_data.noise,
+                        aps, rng.randint(low=1, high=2**29)
+                    ))
+            else:
+                jobs = []
+                for i in range(n_per_chunk):
+                    gal, psf = get_gal_wldeblend(rng=rng, data=wldeblend_data)
+                    jobs.append(joblib.delayed(_meas)(
+                        gal, psf, wldeblend_data.noise,
+                        aps, rng.randint(low=1, high=2**29))
+                    )
 
-            # jobs = []
-            # for i in range(n_per_chunk):
-            #     gal, psf = get_gal_wldeblend(rng=rng, data=wldeblend_data)
-            #     jobs.append(joblib.delayed(_meas)(
-            #         gal, psf, wldeblend_data.noise, aps, rng.randint(low=1, high=2**29))
-            #     )
-            #
-            # outputs.extend(par(jobs))
+                outputs.extend(par(jobs))
 
             d = np.zeros(len(outputs), dtype=[
                 ("s2n", "f4", (len(aps),)),
