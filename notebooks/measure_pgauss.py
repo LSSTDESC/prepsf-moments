@@ -183,10 +183,10 @@ def _make_obs(gal, psf, nse, rng, n=101):
     psf_im = psf.drawImage(nx=n, ny=n, scale=0.2).array
     cen = (n-1)/2
 
-    im += rng.normal(size=im.shape, scale=nse)
+    _im = im + rng.normal(size=im.shape, scale=nse)
 
     obs = ngmix.Observation(
-        image=im,
+        image=_im,
         weight=np.ones_like(im)/nse**2,
         jacobian=ngmix.DiagonalJacobian(scale=0.2, row=cen, col=cen),
         psf=ngmix.Observation(
@@ -195,12 +195,13 @@ def _make_obs(gal, psf, nse, rng, n=101):
             jacobian=ngmix.DiagonalJacobian(scale=0.2, row=cen, col=cen),
         ),
     )
-    return obs
+
+    return obs, np.sum(im)
 
 
 def _meas(gal, psf, redshift, nse, aps, seed):
     rng = np.random.RandomState(seed=seed)
-    obs = _make_obs(
+    obs, true_flux = _make_obs(
         gal,
         psf,
         nse,
@@ -217,6 +218,7 @@ def _meas(gal, psf, redshift, nse, aps, seed):
     fluxes = []
     flux_errs = []
     terr = []
+    tflux = []
     for ap in aps:
         mom = PGaussMom(ap).go(obs)
         psf_mom = PGaussMom(ap).go(obs.psf, no_psf=True)
@@ -235,8 +237,9 @@ def _meas(gal, psf, redshift, nse, aps, seed):
         fluxes.append(mom["flux"])
         flux_errs.append(mom["flux_err"])
         terr.append(mom["T_err"])
+        tflux.append(true_flux)
 
-    return s2ns, g1s, flags, ts, trs, g1errs, redshifts, fluxes, flux_errs, terr
+    return s2ns, g1s, flags, ts, trs, g1errs, redshifts, fluxes, flux_errs, terr, tflux
 
 
 def main():
@@ -282,6 +285,7 @@ def main():
                 ("flux", "f4", (len(aps),)),
                 ("flux_err", "f4", (len(aps),)),
                 ("T_err", "f4", (len(aps),)),
+                ("true_flux", "f4", (len(aps),)),
             ])
             _o = np.array(outputs)
             d["s2n"] = _o[:, 0]
@@ -294,6 +298,7 @@ def main():
             d["flux"] = _o[:, 7]
             d["flux_err"] = _o[:, 8]
             d["T_err"] = _o[:, 9]
+            d["true_flux"] = _o[:, 10]
 
             fitsio.write(
                 "./results/meas_seed%d.fits" % seed,
