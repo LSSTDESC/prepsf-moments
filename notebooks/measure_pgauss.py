@@ -214,6 +214,9 @@ def _meas(gal, psf, redshift, nse, aps, seed):
     flags = []
     g1errs = []
     redshifts = []
+    fluxes = []
+    flux_errs = []
+    terr = []
     for ap in aps:
         mom = PGaussMom(ap).go(obs)
         psf_mom = PGaussMom(ap).go(obs.psf, no_psf=True)
@@ -229,8 +232,11 @@ def _meas(gal, psf, redshift, nse, aps, seed):
         ts.append(mom["T"])
         trs.append(mom["T"]/psf_mom_t)
         redshifts.append(redshift)
+        fluxes.append(mom["flux"])
+        flux_errs.append(mom["flux_err"])
+        terr.append(mom["T_err"])
 
-    return s2ns, g1s, flags, ts, trs, g1errs, redshifts
+    return s2ns, g1s, flags, ts, trs, g1errs, redshifts, fluxes, flux_errs, terr
 
 
 def main():
@@ -273,6 +279,9 @@ def main():
                 ("flags", "i4", (len(aps),)),
                 ("e1_err", "i4", (len(aps),)),
                 ("redshift", "f4", (len(aps),)),
+                ("flux", "f4", (len(aps),)),
+                ("flux_err", "f4", (len(aps),)),
+                ("T_err", "f4", (len(aps),)),
             ])
             _o = np.array(outputs)
             d["s2n"] = _o[:, 0]
@@ -282,6 +291,9 @@ def main():
             d["Tratio"] = _o[:, 4]
             d["e1_err"] = _o[:, 5]
             d["redshift"] = _o[:, 6]
+            d["flux"] = _o[:, 7]
+            d["flux_err"] = _o[:, 8]
+            d["T_err"] = _o[:, 9]
 
             fitsio.write(
                 "./results/meas_seed%d.fits" % seed,

@@ -154,8 +154,24 @@ compact Fourier-space filters to future work.
 
 \subsection{Optimal Gaussian Aperture for an LSST-like Survey}
 
+\begin{figure}
+  \centering
+  \includegraphics[width=\columnwidth]{figures/optap.pdf}
+
+  \caption{
+    Optimal Aperture for Pre-PSF Gaussian Moments. We show the relative effective sample
+    size (top-left), the relative effective shape noise (top-right), the change in the median
+    redshift (bottom-left), and relative total shear variance (bottom-right). All quantities are
+    relative to the optimal aperture of $\approx$1.5'' FWHM. The optimum is determined by a trade-off
+    between the effective shape noise and the effective number density, and it does not appear to
+    result in a significant loss of redshift depth.
+    \label{fig:opap}
+  }
+
+\end{figure}
+
 We start by determining the optimal measurement aperture. For this task, we simulate
-isolated objects in an LSST-like $r$-band image using the \texttt{WeakLensingDeblending}
+isolated objects in LSST-like $r$-band images using the \texttt{WeakLensingDeblending}
 package \mrb{cite}. We then compute our moments statistics for a range of apertures between 1.25''
 to 2.75''. For each aperture, we employ a set of cuts on the objects that mimics a typical weak lensing
 sample selection using \mdet. These cuts are
@@ -182,23 +198,15 @@ the effective shape noise
 and overall total shear variance $\sigma_{e,{\rm eff}}^2/n_{\rm eff}$.
 
 We show the results of these computations in Figure~\ref{fig:opap}. We find that the
-minimal total shear variance is achieved with an aperture of 1.5'' FWHM (bottom-right panel).
-In the top-left panel, we show the raw sample size scaled relative to the sample
-size at the optimal aperture. We show the effective shape noise and median flux S/N of
-the selected sample also scaled relative to optimal aperture in the top-right and
+minimal total shear variance is achieved with an aperture of $\approx$1.5'' FWHM (bottom-right panel).
+In the top-left panel, we show the effective sample size scaled relative to the sample
+size at the optimal aperture. We show the effective shape noise and difference in the
+median redshift of the selected sample also relative to optimal aperture in the top-right and
 bottom-left panels respectively. As expected, the optimal sample is a trade off between
 larger apertures which increase the sample size and smaller apertures which decrease
-the shape noise. We find that the median S/N of the sample has a fairly broad peak
-around the optimal aperture.
-
-\begin{figure*}
-  \centering
-  \includegraphics[width=2\columnwidth]{figures/optap.pdf}
-
-  \caption{Optimal Apertures for pre-PSF Gaussian Moments.
-  \label{fig:opap}}
-
-\end{figure*}
+the shape noise. We find that the median redshift of the sample has a fairly broad peak
+around the optimal aperture, indicating that the optimal aperture in terms of the total
+shear variance is not sacrificing redshift depth.
 
 
 \subsection{Error Properties for Isolated Objects}
