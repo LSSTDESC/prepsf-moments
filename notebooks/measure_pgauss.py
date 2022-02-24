@@ -196,12 +196,23 @@ def _make_obs(gal, psf, nse, rng, n=101):
         ),
     )
 
-    return obs, np.sum(im)
+    obs_nn = ngmix.Observation(
+        image=im,
+        weight=np.ones_like(im)/nse**2,
+        jacobian=ngmix.DiagonalJacobian(scale=0.2, row=cen, col=cen),
+        psf=ngmix.Observation(
+            image=psf_im,
+            weight=np.ones_like(im),
+            jacobian=ngmix.DiagonalJacobian(scale=0.2, row=cen, col=cen),
+        ),
+    )
+
+    return obs, np.sum(im), obs_nn
 
 
 def _meas(gal, psf, redshift, nse, aps, seed):
     rng = np.random.RandomState(seed=seed)
-    obs, true_flux = _make_obs(
+    obs, true_flux, obs_nn = _make_obs(
         gal,
         psf,
         nse,
@@ -219,8 +230,10 @@ def _meas(gal, psf, redshift, nse, aps, seed):
     flux_errs = []
     terr = []
     tflux = []
+    tapflux = []
     for ap in aps:
         mom = PGaussMom(ap).go(obs)
+        mom_nn = PGaussMom(ap).go(obs_nn)
         psf_mom = PGaussMom(ap).go(obs.psf, no_psf=True)
         if psf_mom["flags"] == 0:
             psf_mom_t = psf_mom["T"]
@@ -238,8 +251,12 @@ def _meas(gal, psf, redshift, nse, aps, seed):
         flux_errs.append(mom["flux_err"])
         terr.append(mom["T_err"])
         tflux.append(true_flux)
+        tapflux.append(mom_nn["flux"])
 
-    return s2ns, g1s, flags, ts, trs, g1errs, redshifts, fluxes, flux_errs, terr, tflux
+    return (
+        s2ns, g1s, flags, ts, trs, g1errs, redshifts, fluxes, flux_errs, terr,
+        tflux, tapflux,
+    )
 
 
 def main():
@@ -286,6 +303,7 @@ def main():
                 ("flux_err", "f4", (len(aps),)),
                 ("T_err", "f4", (len(aps),)),
                 ("true_flux", "f4", (len(aps),)),
+                ("true_ap_flux", "f4", (len(aps),)),
             ])
             _o = np.array(outputs)
             d["s2n"] = _o[:, 0]
@@ -299,6 +317,7 @@ def main():
             d["flux_err"] = _o[:, 8]
             d["T_err"] = _o[:, 9]
             d["true_flux"] = _o[:, 10]
+            d["true_ap_flux"] = _o[:, 11]
 
             fitsio.write(
                 "./results/meas_seed%d.fits" % seed,
