@@ -107,10 +107,10 @@ apodization kernel:
 T(y) = \left\{
 \begin{array}{cc}
 0 & y < -3 \\
-(-5 * y^7 / 69984 & \\
-+ 7 * y^5 / 2592 & \\
-- 35 * y^3 / 864 & -3 \le y \le 3 \\
-+ 35 * y / 96 & \\
+(-5y^7 / 69984 & \\
++ 7y^5 / 2592 & \\
+- 35y^3 / 864 & -3 \le y \le 3 \\
++ 35y / 96 & \\
 + 1 / 2) &  \\
 1 & y > 3
 \end{array}
@@ -212,6 +212,22 @@ shear variance is not sacrificing redshift depth.
 
 \subsection{Error Properties for Isolated Objects}
 
+We first examine the properties of these estimators for isolated objects. We have not
+studied blending in detail since it has obvious effects that are well beyond the capacity
+of these estimators to recover and are likely common to all object measures. For this task,
+we simulated LSST-like $r$-band objects in small stamps and measure our moments. We obtain the
+true flux in our selected aperture by running both a noiseless and noisy simulation for each
+object. The results of our simulations, binned by true signal-to-noise are shown in
+Figure~\ref{fig:noround_nodetect}. In the top panel, we show the fraction of flux recovered
+as a function of signal-to-noise. This fraction depends on both the size of our aperture
+and the object's profile. In particular, the profiles of objects in an LSST-like survey
+are a function of signal-to-noise, generating the observed recovered flux trend. In the middle
+panel, we show the fractional bias in the aperture flux measurement. We find that our code
+recovers the true aperture flux to better than 1\%. Finally in the bottom panel, we show
+the fractional difference between our reported flux errors and the empirical flux error
+measured from the difference between our flux measurements and the true aperture flux. We
+find that our reported flux errors are accurate to better than a few percent.
+
 \begin{figure}
     \includegraphics[width=\columnwidth]{figures/test-noround-nodetect.pdf}
 
@@ -221,8 +237,8 @@ shear variance is not sacrificing redshift depth.
       As expected, because our fixed Gaussian apertures are not matched to the objects,
       we typically underestimate the total flux. The degree of underestimation depends on
       the true profile of the object which changes systematically as a function of
-      signal-to-noise in our simulations. In the middle panel, we show the bias in
-      our aperture flux relative to the reported flux error. Finally, in the bottom panel,
+      signal-to-noise in our simulations. In the middle panel, we show the fractional bias in
+      our aperture flux measurement. Finally, in the bottom panel,
       we show the fractional deviation of our flux error predictions from the true
       empirical scatter in the flux. The bands in each panel show the $3\sigma$ uncertainties
       in our measurements obtained from bootstrap resampling. For isolated objects
@@ -234,7 +250,7 @@ shear variance is not sacrificing redshift depth.
 \end{figure}
 
 
-\subsection{Shear Recovery with \mdet}
+\subsection{Shear Recovery Under Blending with \mdet}
 
 \begin{figure}
     \includegraphics[width=\columnwidth]{figures/pair-plot.pdf}
