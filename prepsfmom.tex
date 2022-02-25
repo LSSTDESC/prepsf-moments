@@ -214,17 +214,21 @@ shear variance is not sacrificing redshift depth.
 \begin{figure}
     \includegraphics[width=\columnwidth]{figures/test-noround-nodetect.pdf}
 
-    \caption{ Results of flux uncertainty measurements using \ksigma\ moments
-    with perfect object detection.  In the top panel we show the fractional
-    difference between the measured flux and the true flux. The flux is
-    underestimated, but this is not surprising: \ksigma\ measures the flux in
-    an effective aperture so the flux must be understimated. Note, however,
-    that the fraction of the recovered light is independent of S/N.  In the
-    middle panel we show the fractional difference between the true uncertainty
-    and the predicted uncertainty.  The flux error predictions agree well with
-    the true scatter in flux.  In the bottom panel we show the fraction of
-    outliers identified when measuring the flux scatter.
-    \label{fig:noround_nodetect}}
+    \caption{
+      Statistics for Isolated Object Measurements. In the top panel, we show the
+      fraction fo flux recovered for a typical object as a function of signal-to-noise.
+      As expected, because our fixed Gaussian apertures are not matched to the objects,
+      we typically underestimate the total flux. The degree of underestimation depends on
+      the true profile of the object which changes systematically as a function of
+      signal-to-noise in our simulations. In the middle panel, we show the bias in
+      our aperture flux relative to the reported flux error. Finally, in the bottom panel,
+      we show the fractional deviation of our flux error predictions from the true
+      empirical scatter in the flux. The bands in each panel show the uncertainties in our
+      measurements obtained from bootstrap resampling. For isolated objects with known, white
+      pixel noise fields, our reported measurements and errors are correct to
+      better than a few percent \mrb{check this a number}.
+      \label{fig:noround_nodetect}
+    }
 
 \end{figure}
 
