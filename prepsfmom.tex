@@ -135,7 +135,7 @@ in Fourier-space, but in image pixel coordinates.
 \textbf{Error Propagation} We compute the errors in our measurements by directly computing the
 covariance in Fourier-space. Due to the fact that all of the operations for computing the moments
 above are linear, we can do this operation analytically. As shown below, our reported errors are
-accurate to better than 1\% for isolated objects.
+accurate to better than a few percent for isolated objects.
 
 \textbf{Efficiency} Our final implementation requires two FFTs, uses \texttt{numba} to compute the
 apodization masks, uses use a fast exponential implementation that is accurate to float precision,
@@ -162,7 +162,8 @@ compact Fourier-space filters to future work.
     Optimal Aperture for Pre-PSF Gaussian Moments. We show the relative effective sample
     size (top-left), the relative effective shape noise (top-right), the change in the median
     redshift (bottom-left), and relative total shear variance (bottom-right). All quantities are
-    relative to the optimal aperture of $\approx$1.5'' FWHM. The optimum is determined by a trade-off
+    relative to the optimal aperture of $\approx$1.5'' FWHM. The bands are $3\sigma$ uncretainties
+    obtained through bootstrap resampling. The optimum is determined by a trade-off
     between the effective shape noise and the effective number density, and it does not appear to
     result in a significant loss of redshift depth.
     \label{fig:opap}
@@ -223,10 +224,10 @@ shear variance is not sacrificing redshift depth.
       signal-to-noise in our simulations. In the middle panel, we show the bias in
       our aperture flux relative to the reported flux error. Finally, in the bottom panel,
       we show the fractional deviation of our flux error predictions from the true
-      empirical scatter in the flux. The bands in each panel show the uncertainties in our
-      measurements obtained from bootstrap resampling. For isolated objects with known, white
-      pixel noise fields, our reported measurements and errors are correct to
-      better than a few percent \mrb{check this a number}.
+      empirical scatter in the flux. The bands in each panel show the $3\sigma$ uncertainties
+      in our measurements obtained from bootstrap resampling. For isolated objects
+      with white pixel noise, our reported measurements and errors are correct to
+      better than a few percent.
       \label{fig:noround_nodetect}
     }
 
