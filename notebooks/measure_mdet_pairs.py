@@ -1,6 +1,5 @@
 import os
 import logging
-import functools
 import collections
 import sys
 
@@ -59,7 +58,6 @@ WLDeblendData = collections.namedtuple(
 )
 
 
-@functools.lru_cache(maxsize=8)
 def _cached_catalog_read():
     fname = os.path.join(
         os.environ.get('CATSIM_DIR', '.'),
@@ -68,7 +66,6 @@ def _cached_catalog_read():
     return fitsio.read(fname)
 
 
-@functools.lru_cache(maxsize=8)
 def init_wldeblend(*, survey_bands):
     """Initialize weak lensing deblending survey data.
 
