@@ -232,6 +232,7 @@ def _meas(gal, psf, redshift, nse, aps, seed):
     terr = []
     tflux = []
     tapflux = []
+    ts2ns = []
     for ap in aps:
         mom = PGaussMom(ap).go(obs)
         mom_nn = PGaussMom(ap).go(obs_nn)
@@ -253,10 +254,11 @@ def _meas(gal, psf, redshift, nse, aps, seed):
         terr.append(mom["T_err"])
         tflux.append(true_flux)
         tapflux.append(mom_nn["flux"])
+        ts2ns.append(mom_nn["flux"]/mom_nn["flux_err"])
 
     return (
         s2ns, g1s, flags, ts, trs, g1errs, redshifts, fluxes, flux_errs, terr,
-        tflux, tapflux,
+        tflux, tapflux, ts2ns
     )
 
 
@@ -305,6 +307,7 @@ def main():
                 ("T_err", "f4", (len(aps),)),
                 ("true_flux", "f4", (len(aps),)),
                 ("true_ap_flux", "f4", (len(aps),)),
+                ("true_s2n", "f4", (len(aps),)),
             ])
             _o = np.array(outputs)
             d["s2n"] = _o[:, 0]
@@ -319,6 +322,7 @@ def main():
             d["T_err"] = _o[:, 9]
             d["true_flux"] = _o[:, 10]
             d["true_ap_flux"] = _o[:, 11]
+            d["true_s2n"] = _o[:, 12]
 
             fitsio.write(
                 "./results/meas_seed%d.fits" % seed,
