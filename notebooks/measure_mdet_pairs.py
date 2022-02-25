@@ -8,9 +8,44 @@ import ngmix
 import numpy as np
 import fitsio
 import galsim
-import joblib
 import tqdm
-from ngmix.prepsfmom import PGaussMom
+import yaml
+import joblib
+
+from shear_meas import meas_m_c
+from metadetect.metadetect import do_metadetect
+
+
+NOISE_FAC = 1e-2
+
+MDET_CFG = yaml.safe_load("""\
+model: pgauss
+
+metacal:
+  psf: fitgauss
+  types: [noshear, 1p, 1m, 2p, 2m]
+  use_noise_image: True
+
+sx: null
+
+nodet_flags: 33554432  # 2**25 is GAIA stars
+
+bmask_flags: 1610612736  # 2**29 | 2**30 edge in either MEDS of pizza cutter
+
+mfrac_fwhm: 1.5  # arcsec
+mask_region: 1
+
+weight:
+  fwhm: 1.5  # arcsec
+
+meds:
+  box_padding: 2
+  box_type: iso_radius
+  max_box_size: 48
+  min_box_size: 48
+  rad_fac: 2
+  rad_min: 4
+""")
 
 
 LOGGER = logging.getLogger(__name__)
@@ -176,12 +211,33 @@ def get_gal_wldeblend(*, rng, data):
     )
 
 
-def _make_obs(gal, psf, nse, rng, n=101):
-    xoff, yoff = rng.uniform(size=2, low=-0.5, high=0.5)
-    im = galsim.Convolve([gal, psf]).drawImage(
-        nx=n, ny=n, scale=0.2, offset=(xoff, yoff),
+def _make_obs(gal1, gal2, psf, nse, rng, sep, g1, n=201):
+    pixel_scale = 0.2
+    xoff1, yoff1 = rng.uniform(size=2, low=-0.5, high=0.5) * pixel_scale
+    xoff2, yoff2 = rng.uniform(size=2, low=-0.5, high=0.5) * pixel_scale
+
+    ang = rng.uniform(low=0, high=np.pi)
+    sep_2 = sep/2
+    cosa = np.cos(ang)
+    sina = np.sin(ang)
+    xa = sep_2*cosa
+    ya = sep_2*sina
+
+    xoff1 += xa
+    yoff1 += ya
+
+    xoff2 -= xa
+    yoff2 -= ya
+
+    im = galsim.Convolve([
+        (gal1.shift(xoff1, yoff1) + gal2.shift(xoff2, yoff2)).shear(
+            galsim.Shear(g1=g1, g2=0)
+        ),
+        psf
+    ]).drawImage(
+        nx=n, ny=n, scale=pixel_scale,
     ).array
-    psf_im = psf.drawImage(nx=n, ny=n, scale=0.2).array
+    psf_im = psf.drawImage(nx=n, ny=n, scale=pixel_scale).array
     cen = (n-1)/2
 
     _im = im + rng.normal(size=im.shape, scale=nse)
@@ -189,149 +245,213 @@ def _make_obs(gal, psf, nse, rng, n=101):
     obs = ngmix.Observation(
         image=_im,
         weight=np.ones_like(im)/nse**2,
-        jacobian=ngmix.DiagonalJacobian(scale=0.2, row=cen+yoff, col=cen+xoff),
+        bmask=np.zeros_like(im, dtype="i4"),
+        ormask=np.zeros_like(im, dtype="i4"),
+        mfrac=np.zeros_like(im, dtype="f4"),
+        noise=rng.normal(size=im.shape, scale=nse),
+        jacobian=ngmix.DiagonalJacobian(scale=pixel_scale, row=cen, col=cen),
         psf=ngmix.Observation(
             image=psf_im,
             weight=np.ones_like(im),
-            jacobian=ngmix.DiagonalJacobian(scale=0.2, row=cen, col=cen),
+            jacobian=ngmix.DiagonalJacobian(scale=pixel_scale, row=cen, col=cen),
         ),
     )
 
-    obs_nn = ngmix.Observation(
-        image=im,
-        weight=np.ones_like(im)/nse**2,
-        jacobian=ngmix.DiagonalJacobian(scale=0.2, row=cen+yoff, col=cen+xoff),
-        psf=ngmix.Observation(
-            image=psf_im,
-            weight=np.ones_like(im),
-            jacobian=ngmix.DiagonalJacobian(scale=0.2, row=cen, col=cen),
-        ),
-    )
-
-    return obs, np.sum(im), obs_nn
+    mbobs = ngmix.MultiBandObsList()
+    obslist = ngmix.ObsList()
+    obslist.append(obs)
+    mbobs.append(obslist)
+    return mbobs
 
 
-def _meas(gal, psf, redshift, nse, aps, seed):
-    rng = np.random.RandomState(seed=seed)
-    obs, true_flux, obs_nn = _make_obs(
-        gal,
-        psf,
-        nse,
-        rng,
-    )
+def _is_none(res):
+    if res is None:
+        return True
 
-    s2ns = []
-    g1s = []
-    ts = []
-    trs = []
-    flags = []
-    g1errs = []
-    redshifts = []
-    fluxes = []
-    flux_errs = []
-    terr = []
-    tflux = []
-    tapflux = []
-    ts2ns = []
-    fflags = []
-    for ap in aps:
-        mom = PGaussMom(ap).go(obs)
-        mom_nn = PGaussMom(ap).go(obs_nn)
-        psf_mom = PGaussMom(ap).go(obs.psf, no_psf=True)
-        if psf_mom["flags"] == 0:
-            psf_mom_t = psf_mom["T"]
-        else:
-            psf_mom_t = np.nan
+    if any(res[k] is None for k in res):
+        return True
 
-        flags.append(mom["flags"] | psf_mom["flags"])
-        s2ns.append(mom["s2n"])
-        g1s.append(mom["e1"])
-        g1errs.append(mom["e_err"][0])
-        ts.append(mom["T"])
-        trs.append(mom["T"]/psf_mom_t)
-        redshifts.append(redshift)
-        fluxes.append(mom["flux"])
-        flux_errs.append(mom["flux_err"])
-        terr.append(mom["T_err"])
-        tflux.append(true_flux)
-        tapflux.append(mom_nn["flux"])
-        ts2ns.append(mom_nn["flux"]/mom_nn["flux_err"])
-        fflags.append(mom["flux_flags"])
+    return False
 
+
+def _make_mask(d):
     return (
-        s2ns, g1s, flags, ts, trs, g1errs, redshifts, fluxes, flux_errs, terr,
-        tflux, tapflux, ts2ns, fflags,
+        (d["flags"] == 0)
+        & (d["pgauss_s2n"] > 10)
+        & (d["pgauss_T_ratio"] > 0.5)
+    )
+
+
+def _meas_one(gal1, gal2, psf, nse, seed, sep):
+    # run the sims
+    rng = np.random.RandomState(seed=seed)
+    pmbobs = _make_obs(
+        gal1, gal2, psf, nse, rng, sep, 0.02
+    )
+    pmdet_res = do_metadetect(MDET_CFG, pmbobs, rng)
+
+    rng = np.random.RandomState(seed=seed)
+    mmbobs = _make_obs(
+        gal1, gal2, psf, nse, rng, sep, -0.02
+    )
+    mmdet_res = do_metadetect(MDET_CFG, mmbobs, rng)
+
+    # failures are tragic
+    if _is_none(pmdet_res) or _is_none(mmdet_res):
+        return None
+
+    # for now require at least one detection above threshold for every image
+    msks = {"p": {}, "m": {}}
+    for key in ["noshear", "1p", "1m", "2p", "2m"]:
+        pmsk = _make_mask(pmdet_res[key])
+        if not np.any(pmsk):
+            return None
+        else:
+            msks["p"][key] = pmsk
+
+        mmsk = _make_mask(mmdet_res[key])
+        if not np.any(mmsk):
+            return None
+        else:
+            msks["m"][key] = mmsk
+
+    # now we cancel noise
+    p_g1 = np.mean(pmdet_res["noshear"]["pgauss_g"][msks["p"]["noshear"], 0])
+    m_g1 = np.mean(mmdet_res["noshear"]["pgauss_g"][msks["m"]["noshear"], 0])
+    g1 = (p_g1 - m_g1)/2
+
+    p_g2 = np.mean(pmdet_res["noshear"]["pgauss_g"][msks["p"]["noshear"], 1])
+    m_g2 = np.mean(mmdet_res["noshear"]["pgauss_g"][msks["m"]["noshear"], 1])
+    g2 = (p_g2 + m_g2)/2
+
+    # and measure average R
+    p_R11 = (
+        np.mean(pmdet_res["1p"]["pgauss_g"][msks["p"]["1p"], 0])
+        -
+        np.mean(pmdet_res["1m"]["pgauss_g"][msks["p"]["1m"], 0])
+    ) / 0.02
+    m_R11 = (
+        np.mean(mmdet_res["1p"]["pgauss_g"][msks["m"]["1p"], 0])
+        -
+        np.mean(mmdet_res["1m"]["pgauss_g"][msks["m"]["1m"], 0])
+    ) / 0.02
+    R11 = (p_R11 + m_R11)/2
+
+    p_R22 = (
+        np.mean(pmdet_res["2p"]["pgauss_g"][msks["p"]["2p"], 1])
+        -
+        np.mean(pmdet_res["2m"]["pgauss_g"][msks["p"]["2m"], 1])
+    ) / 0.02
+    m_R22 = (
+        np.mean(mmdet_res["2p"]["pgauss_g"][msks["m"]["2p"], 1])
+        -
+        np.mean(mmdet_res["2m"]["pgauss_g"][msks["m"]["2m"], 1])
+    ) / 0.02
+    R22 = (p_R22 + m_R22)/2
+
+    num_det = (
+        np.sum(msks["p"]["noshear"])
+        + np.sum(msks["m"]["noshear"])
+    ) / 2
+
+    return (g1, R11, g2, R22, num_det)
+
+
+def _meas_many(seed, n_per_chunk, sep):
+    rng = np.random.RandomState(seed=seed)
+    seeds = rng.randint(low=1, high=2**31, size=n_per_chunk)
+
+    wldeblend_data = init_wldeblend(survey_bands="lsst-r")
+
+    output = []
+    for seed in tqdm.tqdm(seeds, ncols=79, desc="pair loop"):
+        gal1, psf, _ = get_gal_wldeblend(rng=rng, data=wldeblend_data)
+        gal2, _, _ = get_gal_wldeblend(rng=rng, data=wldeblend_data)
+        res = _meas_one(gal1, gal2, psf, wldeblend_data.noise*NOISE_FAC, seed, sep)
+        if res is not None:
+            output.append(res)
+
+    return output
+
+
+def _process_outputs(outputs, sep, seed):
+    os.makedirs("./mdet_results", exist_ok=True)
+
+    d = np.array(outputs, dtype=[
+        ("g1", "f8"),
+        ("R11", "f8"),
+        ("g2", "f8"),
+        ("R22", "f8"),
+        ("n_det", "f8"),
+    ])
+
+    m, msd, c, csd = meas_m_c(d)
+    msg = """\
+# of sims: {n_sims}
+sep: {sep}
+# of detections: {ndet}
+noise cancel m   : {m: f} +/- {msd: f} [1e-3, 3-sigma]
+noise cancel c   : {c: f} +/- {csd: f} [1e-5, 3-sigma]""".format(
+                n_sims=len(d),
+                sep=sep,
+                ndet=np.mean(d["n_det"]),
+                m=m/1e-3,
+                msd=msd/1e-3 * 3,
+                c=c/1e-5,
+                csd=csd/1e-5 * 3,
+    )
+    print(msg, flush=True)
+
+    fitsio.write(
+        "./mdet_results/meas_sep%0.3f_seed%d.fits" % (sep, seed),
+        d,
+        clobber=True,
     )
 
 
 def main():
-    n_per_chunk = 100
-    n_chunks = int(sys.argv[1]) if len(sys.argv) > 1 else 1
+    sep = float(sys.argv[1])
+    n_chunks = int(sys.argv[2]) if len(sys.argv) > 2 else 1
     seed = np.random.randint(low=1, high=2**29)
     rng = np.random.RandomState(seed=seed)
+    backend = "local"
 
-    os.makedirs("./results", exist_ok=True)
-
-    wldeblend_data = init_wldeblend(survey_bands="lsst-r")
-
-    aps = np.linspace(1.25, 2.75, 25)
     outputs = []
-    with joblib.Parallel(n_jobs=-1, verbose=10, batch_size=2) as par:
-        for chunk in tqdm.trange(n_chunks):
-            if False:
-                for i in tqdm.trange(n_per_chunk):
-                    gal, psf, redshift = get_gal_wldeblend(rng=rng, data=wldeblend_data)
-                    outputs.append(_meas(
-                        gal, psf, redshift, wldeblend_data.noise,
-                        aps, rng.randint(low=1, high=2**29)
-                    ))
-            else:
-                jobs = []
-                for i in range(n_per_chunk):
-                    gal, psf, redshift = get_gal_wldeblend(rng=rng, data=wldeblend_data)
-                    jobs.append(joblib.delayed(_meas)(
-                        gal, psf, redshift, wldeblend_data.noise,
-                        aps, rng.randint(low=1, high=2**29))
-                    )
+    if backend == "local":
+        n_per_chunk = 10
+        n_chunks = 1
+        for chunk in tqdm.trange(n_chunks, ncols=79, desc="chunks loop"):
+            outputs.extend(
+                _meas_many(rng.randint(low=1, high=2**29), n_per_chunk, sep)
+            )
+        import pprint
+        pprint.pprint(outputs)
+    elif backend == "joblib":
+        n_per_chunk = 10
+        n_chunks = 10
+        with joblib.Parallel(n_jobs=-1, verbose=100) as par:
+            jobs = [
+                joblib.delayed(_meas_many)(
+                    rng.randint(low=1, high=2**29), n_per_chunk, sep
+                )
+                for chunk in range(n_chunks)
+            ]
+            _outputs = par(jobs)
+        for _o in _outputs:
+            outputs.extend(_o)
+    else:
+        pass
+        # jobs = []
+        # for i in range(n_per_chunk):
+        #     gal, psf, redshift = get_gal_wldeblend(rng=rng, data=wldeblend_data)
+        #     jobs.append(joblib.delayed(_meas)(
+        #         gal, psf, redshift, wldeblend_data.noise,
+        #         aps, rng.randint(low=1, high=2**29))
+        #     )
+        #
+        # outputs.extend(par(jobs))
 
-                outputs.extend(par(jobs))
-
-            d = np.zeros(len(outputs), dtype=[
-                ("s2n", "f4", (len(aps),)),
-                ("e1", "f4", (len(aps),)),
-                ("T", "f4", (len(aps),)),
-                ("Tratio", "f4", (len(aps),)),
-                ("flags", "i4", (len(aps),)),
-                ("e1_err", "i4", (len(aps),)),
-                ("redshift", "f4", (len(aps),)),
-                ("flux", "f4", (len(aps),)),
-                ("flux_err", "f4", (len(aps),)),
-                ("T_err", "f4", (len(aps),)),
-                ("true_flux", "f4", (len(aps),)),
-                ("true_ap_flux", "f4", (len(aps),)),
-                ("true_s2n", "f4", (len(aps),)),
-                ("flux_flags", "i4", (len(aps),)),
-            ])
-            _o = np.array(outputs)
-            d["s2n"] = _o[:, 0]
-            d["e1"] = _o[:, 1]
-            d["flags"] = _o[:, 2]
-            d["T"] = _o[:, 3]
-            d["Tratio"] = _o[:, 4]
-            d["e1_err"] = _o[:, 5]
-            d["redshift"] = _o[:, 6]
-            d["flux"] = _o[:, 7]
-            d["flux_err"] = _o[:, 8]
-            d["T_err"] = _o[:, 9]
-            d["true_flux"] = _o[:, 10]
-            d["true_ap_flux"] = _o[:, 11]
-            d["true_s2n"] = _o[:, 12]
-            d["flux_flags"] = _o[:, 13]
-
-            fitsio.write(
-                "./results/meas_seed%d.fits" % seed,
-                d, extname="data", clobber=True)
-            fitsio.write("./results/meas_seed%d.fits" % seed, aps, extname="aps")
+    _process_outputs(outputs, sep, seed)
 
 
 if __name__ == "__main__":
