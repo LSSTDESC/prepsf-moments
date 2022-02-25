@@ -16,6 +16,7 @@ from metadetect.metadetect import do_metadetect
 
 
 NOISE_FAC = 1e-2
+MIN_FLUX = 1.2e5  # about S/N ~ 20
 
 MDET_CFG = yaml.safe_load("""\
 model: pgauss
@@ -203,7 +204,7 @@ def get_gal_wldeblend(*, rng, data):
                     angle * galsim.degrees)
             for band in range(len(data.builders))
         ])
-        if gal.flux > 1.2e5:
+        if gal.flux > MIN_FLUX:
             break
 
     return (
