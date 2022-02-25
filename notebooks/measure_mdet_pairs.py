@@ -188,21 +188,26 @@ def get_gal_wldeblend(*, rng, data):
     psf : galsim Object
         The PSF as a galsim object.
     """
-    rind = rng.choice(data.cat.size)
-    angle = rng.uniform() * 360
-    pa_angle = rng.uniform() * 360
+    while True:
+        rind = rng.choice(data.cat.size)
+        angle = rng.uniform() * 360
+        pa_angle = rng.uniform() * 360
 
-    data.cat['pa_disk'][rind] = pa_angle
-    data.cat['pa_bulge'][rind] = pa_angle
+        data.cat['pa_disk'][rind] = pa_angle
+        data.cat['pa_bulge'][rind] = pa_angle
 
-    return (
-        galsim.Sum([
+        gal = galsim.Sum([
             data.builders[band].from_catalog(
                 data.cat[rind], 0, 0,
                 data.surveys[band].filter_band).model.rotate(
                     angle * galsim.degrees)
             for band in range(len(data.builders))
-        ]),
+        ])
+        if gal.flux > 1.2e5:
+            break
+
+    return (
+        gal,
         galsim.Kolmogorov(fwhm=data.psf_fwhm),
         data.cat["redshift"][rind],
     )
