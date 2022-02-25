@@ -15,7 +15,8 @@ from shear_meas import meas_m_c
 from metadetect.metadetect import do_metadetect
 
 
-NOISE_FAC = 1e-2
+NOISE_FAC = 1
+FLUX_FAC = 1e3
 MIN_FLUX = 1.2e5  # about S/N ~ 20
 
 MDET_CFG = yaml.safe_load("""\
@@ -208,7 +209,7 @@ def get_gal_wldeblend(*, rng, data):
             break
 
     return (
-        gal,
+        FLUX_FAC * gal,
         galsim.Kolmogorov(fwhm=data.psf_fwhm),
         data.cat["redshift"][rind],
     )
