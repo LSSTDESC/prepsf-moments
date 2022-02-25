@@ -205,11 +205,11 @@ def get_gal_wldeblend(*, rng, data):
                     angle * galsim.degrees)
             for band in range(len(data.builders))
         ])
-        if gal.flux > MIN_FLUX:
+        if gal.flux > MIN_FLUX/FLUX_FAC:
             break
 
     return (
-        FLUX_FAC * gal,
+        gal * FLUX_FAC,
         galsim.Kolmogorov(fwhm=data.psf_fwhm),
         data.cat["redshift"][rind],
     )
