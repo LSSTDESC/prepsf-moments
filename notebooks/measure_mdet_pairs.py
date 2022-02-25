@@ -414,7 +414,7 @@ def main():
     n_chunks = int(sys.argv[2]) if len(sys.argv) > 2 else 1
     seed = np.random.randint(low=1, high=2**29)
     rng = np.random.RandomState(seed=seed)
-    backend = "local"
+    backend = "joblib"
 
     outputs = []
     if backend == "local":
@@ -428,7 +428,6 @@ def main():
         pprint.pprint(outputs)
     elif backend == "joblib":
         n_per_chunk = 10
-        n_chunks = 10
         with joblib.Parallel(n_jobs=-1, verbose=100) as par:
             jobs = [
                 joblib.delayed(_meas_many)(
