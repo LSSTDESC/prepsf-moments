@@ -15,7 +15,7 @@ from shear_meas import meas_m_c
 from metadetect.metadetect import do_metadetect
 
 
-FLUX_FAC = 1e8
+FLUX_FAC = 1e5
 MIN_FLUX = 1.2e5  # about S/N ~ 20
 
 MDET_CFG = yaml.safe_load("""\
