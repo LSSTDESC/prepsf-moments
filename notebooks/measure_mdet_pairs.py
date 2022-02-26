@@ -408,7 +408,7 @@ noise cancel c   : {c: f} +/- {csd: f} [1e-5, 3-sigma]""".format(
                 c=c/1e-5,
                 csd=csd/1e-5 * 3,
     )
-    print(msg, flush=True)
+    print("\n" + msg, flush=True)
 
     if USE_EXP:
         fn = (
