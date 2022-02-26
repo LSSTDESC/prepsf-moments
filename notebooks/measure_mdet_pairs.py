@@ -410,11 +410,12 @@ noise cancel c   : {c: f} +/- {csd: f} [1e-5, 3-sigma]""".format(
     )
     print(msg, flush=True)
 
-    fitsio.write(
-        "./mdet_results/meas_sep%0.3f_seed%d.fits" % (sep, seed),
-        d,
-        clobber=True,
-    )
+    if USE_EXP:
+        fn = "./mdet_results/meas_exp_sep%0.3f_seed%d.fits" % (sep, seed)
+    else:
+        fn = "./mdet_results/meas_sep%0.3f_seed%d.fits" % (sep, seed)
+
+    fitsio.write(fn, d, clobber=True)
 
 
 def _run_sep(sep, n_chunks):
