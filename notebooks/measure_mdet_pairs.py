@@ -411,9 +411,16 @@ noise cancel c   : {c: f} +/- {csd: f} [1e-5, 3-sigma]""".format(
     print(msg, flush=True)
 
     if USE_EXP:
-        fn = "./mdet_results/meas_exp_sep%0.3f_seed%d.fits" % (sep, seed)
+        fn = (
+            "./mdet_results/meas_exp_"
+            "fluxfac%0.1f_sep%0.3f_seed%d.fits" % (
+                FLUX_FAC, sep, seed
+            )
+        )
     else:
-        fn = "./mdet_results/meas_sep%0.3f_seed%d.fits" % (sep, seed)
+        fn = "./mdet_results/meas_fluxfac%0.1f_sep%0.3f_seed%d.fits" % (
+            FLUX_FAC, sep, seed
+        )
 
     fitsio.write(fn, d, clobber=True)
 
@@ -445,6 +452,7 @@ def _run_sep(sep, n_chunks):
         for _o in _outputs:
             outputs.extend(_o)
     else:
+        n_per_chunk = 1000
         jobs = [
             joblib.delayed(_meas_many)(
                 rng.randint(low=1, high=2**29), n_per_chunk, sep
@@ -452,7 +460,8 @@ def _run_sep(sep, n_chunks):
             for chunk in range(n_chunks)
         ]
         outputs = []
-        with BNLCondorParallel(verbose=100, n_jobs=2000) as exc:
+        n_done = 0
+        with BNLCondorParallel(verbose=100, n_jobs=n_chunks) as exc:
             for pr in tqdm.tqdm(
                 exc(jobs), ncols=79, total=n_chunks, desc="running jobs"
             ):
@@ -462,7 +471,8 @@ def _run_sep(sep, n_chunks):
                     print(f"failure: {repr(e)}", flush=True)
                 else:
                     outputs.extend(res)
-                    if len(outputs) % 100 == 0:
+                    n_done += 1
+                    if n_done % 20 == 0:
                         _process_outputs(outputs, sep, seed)
 
     _process_outputs(outputs, sep, seed)
@@ -473,7 +483,7 @@ def main():
     n_chunks = int(sys.argv[2]) if len(sys.argv) > 2 else 1
 
     if sep <= 0:
-        for sep in [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]:
+        for sep in np.linspace(1, 4, 13).tolist():
             _run_sep(sep, n_chunks)
     else:
         _run_sep(sep, n_chunks)
