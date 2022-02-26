@@ -214,7 +214,6 @@ def get_gal_wldeblend(*, rng, data):
     return (
         gal * FLUX_FAC,
         galsim.Kolmogorov(fwhm=data.psf_fwhm),
-        data.cat["redshift"][rind],
     )
 
 
@@ -372,8 +371,8 @@ def _meas_many(seed, n_per_chunk, sep):
 
     output = []
     for seed in tqdm.tqdm(seeds, ncols=79, desc="pair loop"):
-        gal1, psf, _ = get_gal_wldeblend(rng=rng, data=wldeblend_data)
-        gal2, _, _ = get_gal_wldeblend(rng=rng, data=wldeblend_data)
+        gal1, psf = get_gal_wldeblend(rng=rng, data=wldeblend_data)
+        gal2, _ = get_gal_wldeblend(rng=rng, data=wldeblend_data)
         res = _meas_one(gal1, gal2, psf, wldeblend_data.noise, seed, sep)
         if res is not None:
             output.append(res)
