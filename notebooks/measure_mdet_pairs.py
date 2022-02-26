@@ -15,6 +15,7 @@ from shear_meas import meas_m_c
 from metadetect.metadetect import do_metadetect
 
 
+USE_EXP = True
 FLUX_FAC = 1e4
 MIN_FLUX = 1.2e5  # about S/N ~ 20
 
@@ -189,23 +190,26 @@ def get_gal_wldeblend(*, rng, data):
     psf : galsim Object
         The PSF as a galsim object.
     """
-    while True:
-        rind = rng.choice(data.cat.size)
-        angle = rng.uniform() * 360
-        pa_angle = rng.uniform() * 360
+    if USE_EXP:
+        gal = galsim.Exponential(half_light_radius=0.5) * MIN_FLUX
+    else:
+        while True:
+            rind = rng.choice(data.cat.size)
+            angle = rng.uniform() * 360
+            pa_angle = rng.uniform() * 360
 
-        data.cat['pa_disk'][rind] = pa_angle
-        data.cat['pa_bulge'][rind] = pa_angle
+            data.cat['pa_disk'][rind] = pa_angle
+            data.cat['pa_bulge'][rind] = pa_angle
 
-        gal = galsim.Sum([
-            data.builders[band].from_catalog(
-                data.cat[rind], 0, 0,
-                data.surveys[band].filter_band).model.rotate(
-                    angle * galsim.degrees)
-            for band in range(len(data.builders))
-        ])
-        if gal.flux > MIN_FLUX:
-            break
+            gal = galsim.Sum([
+                data.builders[band].from_catalog(
+                    data.cat[rind], 0, 0,
+                    data.surveys[band].filter_band).model.rotate(
+                        angle * galsim.degrees)
+                for band in range(len(data.builders))
+            ])
+            if gal.flux > MIN_FLUX:
+                break
 
     return (
         gal * FLUX_FAC,
