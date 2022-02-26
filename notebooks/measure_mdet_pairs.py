@@ -11,10 +11,12 @@ import tqdm
 import yaml
 import joblib
 
+from mattspy import BNLCondorParallel
 from shear_meas import meas_m_c
 from metadetect.metadetect import do_metadetect
 
 
+BACKEND = "joblib"
 USE_EXP = True
 FLUX_FAC = 1e4
 MIN_FLUX = 1.2e5  # about S/N ~ 20
@@ -415,15 +417,12 @@ noise cancel c   : {c: f} +/- {csd: f} [1e-5, 3-sigma]""".format(
     )
 
 
-def main():
-    sep = float(sys.argv[1])
-    n_chunks = int(sys.argv[2]) if len(sys.argv) > 2 else 1
+def _run_sep(sep, n_chunks):
     seed = np.random.randint(low=1, high=2**29)
     rng = np.random.RandomState(seed=seed)
-    backend = "joblib"
 
     outputs = []
-    if backend == "local":
+    if BACKEND == "local":
         n_per_chunk = 10
         n_chunks = 1
         for chunk in tqdm.trange(n_chunks, ncols=79, desc="chunks loop"):
@@ -432,7 +431,7 @@ def main():
             )
         import pprint
         pprint.pprint(outputs)
-    elif backend == "joblib":
+    elif BACKEND == "joblib":
         n_per_chunk = 10
         with joblib.Parallel(n_jobs=-1, verbose=100) as par:
             jobs = [
@@ -445,18 +444,38 @@ def main():
         for _o in _outputs:
             outputs.extend(_o)
     else:
-        pass
-        # jobs = []
-        # for i in range(n_per_chunk):
-        #     gal, psf, redshift = get_gal_wldeblend(rng=rng, data=wldeblend_data)
-        #     jobs.append(joblib.delayed(_meas)(
-        #         gal, psf, redshift, wldeblend_data.noise,
-        #         aps, rng.randint(low=1, high=2**29))
-        #     )
-        #
-        # outputs.extend(par(jobs))
+        jobs = [
+            joblib.delayed(_meas_many)(
+                rng.randint(low=1, high=2**29), n_per_chunk, sep
+            )
+            for chunk in range(n_chunks)
+        ]
+        outputs = []
+        with BNLCondorParallel(verbose=100, n_jobs=2000) as exc:
+            for pr in tqdm.tqdm(
+                exc(jobs), ncols=79, total=n_chunks, desc="running jobs"
+            ):
+                try:
+                    res = pr.result()
+                except Exception as e:
+                    print(f"failure: {repr(e)}", flush=True)
+                else:
+                    outputs.extend(res)
+                    if len(outputs) % 100 == 0:
+                        _process_outputs(outputs, sep, seed)
 
     _process_outputs(outputs, sep, seed)
+
+
+def main():
+    sep = float(sys.argv[1])
+    n_chunks = int(sys.argv[2]) if len(sys.argv) > 2 else 1
+
+    if sep <= 0:
+        for sep in [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]:
+            _run_sep(sep, n_chunks)
+    else:
+        _run_sep(sep, n_chunks)
 
 
 if __name__ == "__main__":
