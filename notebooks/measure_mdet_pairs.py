@@ -479,8 +479,13 @@ def _run_sep(sep, n_chunks):
 
 
 def main():
+    global FLUX_FAC
+
     sep = float(sys.argv[1])
     n_chunks = int(sys.argv[2]) if len(sys.argv) > 2 else 1
+    ff = float(sys.argv[3]) if len(sys.argv) > 3 else 1
+    if ff != 1:
+        FLUX_FAC = ff
 
     if sep <= 0:
         for sep in np.linspace(1, 4, 13).tolist():
