@@ -461,7 +461,7 @@ def _run_sep(sep, n_chunks):
         ]
         outputs = []
         n_done = 0
-        with BNLCondorParallel(verbose=100, n_jobs=n_chunks) as exc:
+        with BNLCondorParallel(verbose=0, n_jobs=n_chunks) as exc:
             for pr in tqdm.tqdm(
                 exc(jobs), ncols=79, total=n_chunks, desc="running jobs"
             ):
