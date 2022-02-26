@@ -15,7 +15,6 @@ from shear_meas import meas_m_c
 from metadetect.metadetect import do_metadetect
 
 
-NOISE_FAC = 1
 FLUX_FAC = 1e3
 MIN_FLUX = 1.2e5  # about S/N ~ 20
 
@@ -371,7 +370,7 @@ def _meas_many(seed, n_per_chunk, sep):
     for seed in tqdm.tqdm(seeds, ncols=79, desc="pair loop"):
         gal1, psf, _ = get_gal_wldeblend(rng=rng, data=wldeblend_data)
         gal2, _, _ = get_gal_wldeblend(rng=rng, data=wldeblend_data)
-        res = _meas_one(gal1, gal2, psf, wldeblend_data.noise*NOISE_FAC, seed, sep)
+        res = _meas_one(gal1, gal2, psf, wldeblend_data.noise, seed, sep)
         if res is not None:
             output.append(res)
 
