@@ -16,7 +16,7 @@ from metadetect.metadetect import do_metadetect
 
 
 NOISE_FAC = 1
-FLUX_FAC = 1e3
+FLUX_FAC = 1e5
 MIN_FLUX = 1.2e5  # about S/N ~ 20
 
 MDET_CFG = yaml.safe_load("""\
