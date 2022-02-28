@@ -249,13 +249,36 @@ find that our reported flux errors are accurate to better than a few percent.
 
 \subsection{Shear Recovery Under Blending with \mdet}
 
+We next evaluate how well our moments estimates work with \mdet. For this test,
+we simulate pairs of exponential objects with a half-light radius of 0.5'' and a
+signal-to-noise of $\approx20$. We then run \mdet using our pre-PSF Gaussian moments
+as the shape measurement. We measure the multiplicative bias, shear response, and
+number of objects detected as a function of the separation of the pair. The results
+of this test are show in Figure~\ref{fig:shearpair}. We find that the multiplicative
+bias is generally consistent with second order shear effects, but that as detection
+becomes maximally ambiguous (i.e., we detect 1.5 objects on average), there are large
+changes in the shear response. We do find evidence for a slight increase on the
+multiplicative bias near the maximally ambiguous case.
+
 \begin{figure}
-    \includegraphics[width=\columnwidth]{figures/pair-plot.pdf}
-    \caption{
-        Tests of shear recovery for pairs of galaxies.  We compare
-        \ksigma\ to a simple moment using a fixed gaussian
-        weighted aperture with FWHM=1.2$''$
-    }
+  \centering
+  \vspace{1em}
+  \includegraphics[width=\columnwidth]{figures/pair-plot.pdf}
+  \caption{
+    Tests of shear recovery for pairs of galaxies. On the top panel, we show
+    the multiplicative bias for pairs of exponential objects as a function of
+    the separation of the pair of the pair. These objects have a half-light radius
+    of 0.5'' and a signal-to-noise of $\approx 20$. We also show the expected multiplicative
+    bias from second-order shear effects as the grey solid line. In the middle panel, we show
+    the average number of objects detected. In the bottom panel, we show the
+    \mdet response of the objects to shear. The bands about each line, some not
+    visible, show the 3$\sigma$ errors from bootstrap resampling. As blending
+    causes the maximum ambiguity in detection (i.e., the mean number of detections
+    is $\approx 1.5$), we see systematic changes in the response and a slight
+    increase in the overall multiplicative bias from \mdet. This effect for our
+    moments is no worse than the post-PSF weighted moments used in % \citep{sheldon2020}.
+    \label{fig:shearpair}
+  }
 \end{figure}
 
 \section{Summary}\label{sec:conc}
