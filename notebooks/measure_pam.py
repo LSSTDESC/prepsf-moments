@@ -212,6 +212,7 @@ def _make_obs(gal, psf, nse, rng, n=101):
 
 
 def _meas(gal, psf, redshift, nse, aps, seed):
+    guess = 4
 
     rng = np.random.RandomState(seed=seed)
     obs, true_flux, obs_nn = _make_obs(
@@ -237,9 +238,9 @@ def _meas(gal, psf, redshift, nse, aps, seed):
     fflags = []
     for ap in aps:
         fitter = PrePSFAdmom(min_fwhm=ap, delta_fwhm=0.05)
-        mom = fitter.go(obs)
-        mom_nn = fitter.go(obs_nn)
-        psf_mom = fitter.go(obs.psf, no_psf=True)
+        mom = fitter.go(obs, guess)
+        mom_nn = fitter.go(obs_nn, guess)
+        psf_mom = fitter.go(obs.psf, guess, no_psf=True)
         if psf_mom["flags"] == 0:
             psf_mom_t = psf_mom["T"]
         else:
