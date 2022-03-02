@@ -488,7 +488,7 @@ def main():
         FLUX_FAC = ff
 
     if sep <= 0:
-        for sep in np.linspace(1, 4, 13).tolist():
+        for sep in np.linspace(1, 4, 13).tolist()[::-1]:
             _run_sep(sep, n_chunks)
     else:
         _run_sep(sep, n_chunks)
