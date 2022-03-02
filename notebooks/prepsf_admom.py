@@ -377,10 +377,11 @@ def _gauss_shape_kernels(
     # when the kernel support extends beyong the FFT region, we raise an error
     nrm = np.sum(fkf)/dim/dim
     if not np.allclose(nrm, 1.0, atol=1e-5, rtol=0):
-        raise FFTRangeError(
-            "FFT size appears to be too small for gauss kernel size %f: "
-            "norm = %f (should be 1)!" % (kernel_size, nrm)
-        )
+        fkf /= nrm
+        # raise FFTRangeError(
+        #     "FFT size appears to be too small for gauss kernel size %f: "
+        #     "norm = %f (should be 1)!" % (kernel_size, nrm)
+        # )
 
     # the moment kernels take a bit more work
     # product by u^2 in real space is -dk^2/dku^2 in Fourier space
