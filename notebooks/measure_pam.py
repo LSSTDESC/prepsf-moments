@@ -212,7 +212,7 @@ def _make_obs(gal, psf, nse, rng, n=101):
 
 
 def _meas(gal, psf, redshift, nse, aps, seed):
-    guess = 4
+    guess = 2
 
     rng = np.random.RandomState(seed=seed)
     obs, true_flux, obs_nn = _make_obs(
