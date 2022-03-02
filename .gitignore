@@ -410,3 +410,6 @@ prepsfmomNotes.bib
 prepsfmom.pdf
 
 *.fits
+/notebooks/*.pdf
+/notebooks/*.pkl
+/**/condor-yield/*
