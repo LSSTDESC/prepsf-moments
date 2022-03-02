@@ -176,7 +176,7 @@ def get_gal_wldeblend(*, rng, data):
     )
 
 
-def _make_obs(gal, psf, nse, rng, n=101):
+def _make_obs(gal, psf, nse, rng, n=201):
     xoff, yoff = rng.uniform(size=2, low=-0.5, high=0.5)
     im = galsim.Convolve([gal, psf]).drawImage(
         nx=n, ny=n, scale=0.2, offset=(xoff, yoff),
