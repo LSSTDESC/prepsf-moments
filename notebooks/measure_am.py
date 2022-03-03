@@ -341,7 +341,9 @@ def main():
                 "./results_wmom_am/meas_seed%d.fits" % seed,
                 d, extname="data", clobber=True)
             fitsio.write(
-                "./results_wmom_am/meas_seed%d.fits" % seed, aps, extname="aps"
+                "./results_wmom_am/meas_seed%d.fits" % seed,
+                np.array(aps),
+                extname="aps",
             )
 
 
