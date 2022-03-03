@@ -32,7 +32,8 @@ def _mom2e1e2fwhm(Irr, Irc, Icc):
 
 def _scale_e1e2T(e1, e2, T, minT, deltaT):
     efac = 1.0 + 2.0 * np.sqrt(e1*e1 + e2*e2)
-    fac = _ap_kern_kern(T/efac, minT + 6*deltaT, deltaT)
+    # fac = _ap_kern_kern(T/efac, minT + 6*deltaT, deltaT)
+    fac = 1.0
     return fac*e1, fac*e2, max(T, minT)
 
 
