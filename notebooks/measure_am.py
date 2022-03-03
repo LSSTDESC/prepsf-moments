@@ -329,7 +329,7 @@ def _meas(gal, psf, redshift, nse, aps, seed):
                 ("flags", flags),
                 ("s2n", s2ns),
                 ("e1", g1s),
-                ("g1errs", g1errs),
+                ("e1_err", g1errs),
                 ("Tratio", trs),
             ]:
                 if i == 0:
