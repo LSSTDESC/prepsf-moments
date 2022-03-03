@@ -150,11 +150,13 @@ M_{x_1} & = & \langle x_{1} \rangle/f \nonumber \\
 M_{x_2} & = & \langle x_{2} \rangle/f \nonumber \\
 T & = & (\langle x_{1}x_{1} \rangle + \langle x_{2}x_{2} \rangle)/f \nonumber \\
 M_{+} & = & (\langle x_{1}x_{1} \rangle - \langle x_{2}x_{2} \rangle)/f \nonumber \\
-M_{x} & = & 2 \langle x_{1}x_{2} \rangle/f\ . \nonumber
+M_{\times} & = & 2 \langle x_{1}x_{2} \rangle/f\ . \nonumber
 \end{eqnarray}
-We can define shape measures through $e_1 = M_{+}/T$ and $e_2 = M_{x}/T$. The errors in the
+We can define shape measures through $e_1 = M_{+}/T$ and $e_2 = M_{\times}/T$. The errors in the
 moments are computed through error propagation through the linear operations above assuming
-the pixel noise is uncorrelated in real-space between adjacent pixels.
+the pixel noise is uncorrelated in real-space between adjacent pixels. The errors on the shapes
+$e_{1,2}$ are also computed via error propagation, but note that their error distributions can have
+large tails due to the division by $T$.
 
 There are a fair number of technical details in the implementation that help to make it efficient and
 accurate. These are discussed below.
@@ -162,7 +164,8 @@ accurate. These are discussed below.
 \subsection{Weight Function Choices}
 
 We've implemented two weight function choices. The first is a symmetric Gaussian weight
-function with a given full-width-at-half-maximum. The second choice is a compact filter
+function with a given full-width-at-half-maximum. We call our estimator with a Gaussian
+kernel \pgauss. The second choice is a compact filter
 in Fourier-space that we call \ksigma and was introduced by \citet{BernBFD2016}:
 \begin{equation}
 \label{ksigma}
@@ -237,18 +240,20 @@ them early on in the code. Overall, it runs at a speed of ${\cal O}(10s)$ of mil
 object depending on the stamp size \mrb{check this again}. Our implementation is available in the
 \texttt{ngmix} software package.
 
-\section{Simulations}
-
-
 \section{Results}
 
 In this section, we focus on the results with Gaussian apertures, leaving a study of
-compact Fourier-space filters to future work.
+compact Fourier-space filters to future work. We test our \pgauss estimator using simulations of objects from the \texttt{WeakLensingDeblending} package \mrb{cite}. For simplicity, we only consider LSST-like $r$-band measurements and use a round
+Kolmogorov PSF with a FWHM of 0.85''. Our simulations are done with the \texttt{galsim} \mrb{cite}
+package and analyzed with our implementation of \pgauss in the \texttt{ngmix} package. We also
+use the \mdet technique from \mrb{cite} which uses the \texttt{sep} package \mrb{cite} for object detection.
+
 
 \subsection{Optimal Gaussian Aperture for an LSST-like Survey}
 
 \begin{figure}
   \centering
+  \vspace{1em}
   \includegraphics[width=\columnwidth]{figures/optap.pdf}
   \caption{
     Optimal Aperture for Pre-PSF Gaussian Moments. We show the relative effective sample
@@ -263,8 +268,7 @@ compact Fourier-space filters to future work.
 \end{figure}
 
 We start by determining the optimal measurement aperture. For this task, we simulate
-isolated objects in LSST-like $r$-band images using the \texttt{WeakLensingDeblending}
-package \mrb{cite}. We then compute our moments statistics for a range of apertures between 1.25''
+isolated objects. We then compute our moments statistics for a range of apertures between 1.25''
 to 2.75''. For each aperture, we employ a set of cuts on the objects that mimics a typical weak lensing
 sample selection using \mdet. These cuts are
 \begin{eqnarray}
@@ -287,7 +291,8 @@ the effective shape noise
 \begin{equation}
 \sigma_{e,{\rm eff}}^2 = \frac{\sum (we)^2}{\left(\sum w\right)^2}\ ,
 \end{equation}
-and overall total shear variance $\sigma_{e,{\rm eff}}^2/n_{\rm eff}$.
+and overall total shear variance $\sigma_{e,{\rm eff}}^2/n_{\rm eff}$. See \mrb{cite heymans}
+for the details of these shape measurement statistics.
 
 We show the results of these computations in Figure~\ref{fig:opap}. We find that the
 minimal total shear variance is achieved with an aperture of $\approx$1.5'' FWHM (bottom-right panel).
@@ -303,10 +308,10 @@ shear variance is not sacrificing redshift depth.
 
 \subsection{Error Properties for Isolated Objects}
 
-We first examine the properties of these estimators for isolated objects. We have not
+We next examine the error properties of these estimators for isolated objects. We have not
 studied blending in detail since it has obvious effects that are well beyond the capacity
-of these estimators to recover and are likely common to all object measures. For this task,
-we simulated LSST-like $r$-band objects in small stamps and measure our moments. We obtain the
+of these estimators to recover and are common to all fixed aperture object measures. For this task,
+we use the same isolated object simulations and an aperture size of 1.5'' FWHM. We obtain the
 true flux in our selected aperture by running both a noiseless and noisy simulation for each
 object. The results of our simulations, binned by true signal-to-noise are shown in
 Figure~\ref{fig:noround_nodetect}. In the top panel, we show the fraction of flux recovered
@@ -321,6 +326,7 @@ find that our reported flux errors are accurate to better than a few percent.
 
 \begin{figure}
   \centering
+  \vspace{1em}
   \includegraphics[width=\columnwidth]{figures/test-noround-nodetect.pdf}
   \caption{
     Statistics for Isolated Object Measurements. In the top panel, we show the
@@ -342,16 +348,17 @@ find that our reported flux errors are accurate to better than a few percent.
 
 \subsection{Shear Recovery Under Blending with \mdet}
 
-We next evaluate how well our moments estimates work with \mdet. For this test,
+Finally we evaluate how well our moments estimates work with \mdet. For this test,
 we simulate pairs of exponential objects with a half-light radius of 0.5'' and a
-signal-to-noise of $\approx20$. We then run \mdet using our pre-PSF Gaussian moments
-as the shape measurement. We measure the multiplicative bias, shear response, and
+signal-to-noise of $\approx20$ with the same PSF as above. We then run \mdet using our \pgauss
+moments as the shape measurement. We measure the multiplicative bias, shear response, and
 number of objects detected as a function of the separation of the pair. The results
 of this test are show in Figure~\ref{fig:shearpair}. We find that the multiplicative
-bias is generally consistent with second order shear effects, but that as detection
+bias is consistent with second order shear effects, but that as detection
 becomes maximally ambiguous (i.e., we detect 1.5 objects on average), there are large
 changes in the shear response. We do find evidence for a slight increase on the
-multiplicative bias near the maximally ambiguous case.
+multiplicative bias near the maximally ambiguous case. This effect is not specific to \pgauss
+and was documented in \mrb{cite} for the case of a post-PSF Gaussian moment.
 
 \begin{figure}
   \centering
