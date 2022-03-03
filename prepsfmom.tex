@@ -19,6 +19,7 @@
 \newcommand{\ngmix}{\textsc{ngmix}\xspace}
 \newcommand{\sep}{\textsc{sep}\xspace}
 \newcommand{\ksigma}{\mbox{\boldmath $\mathrm{K}_{\sigma}$}\xspace}
+\newcommand{\pgauss}{\texttt{pgauss}\xspace}
 
 \shorttitle{Pre-PSF Moments for Weak Lensing Shear Measurement}
 \shortauthors{Becker \& Sheldon}
@@ -34,9 +35,90 @@
 % \affil{}
 
 \begin{abstract}
+  We present a technique to measure pre-PSF, aperture-matched weighted fluxes, sizes,
+  and shapes of extended astronomical objects. Our technique directly deconvolves the
+  PSF from the image of the object and then estimates real-space moments of the object
+  using direct integrals in Fourier-space against the appropriate transformations of the
+  moment weight functions. This measurement pipeline for a Gaussian weight function,
+  which we call \pgauss, executes quickly, O(10 ms) \mrb{check this again}, and
+  deterministically, requiring only two fast-fourier transforms (FFTs) and some sums
+  over the results. This pipeline additionally includes zero-padding and apodization
+  corrections in order to control FFT artifacts which can arise during the
+  deconvolution. We demonstrate that for isolated objects, we can recover the underlying
+  true aperture flux to better than a fraction of a percent and report flux errors that
+  are accurate to better than a few percent. We additionally estimate the optimal
+  aperture for Vera C. Rubin Observatory weak lensing studies ($\approx1.5$'' FWHM) and
+  demonstrate that the \mdet weak lensing shear estimator is unbiased when coupled with
+  the \pgauss shape estimate. Due to the fact that our measurement aperture is fixed,
+  the colors of objects measured with \pgauss fluxes are suitable for photometric
+  redshift estimation as well. Our implementation is available in the \texttt{ngmix}
+  software package.
 \end{abstract}
 
 \section{Introduction}\label{sec:intro}
+
+The measurement of extended objects in astronomical images is a complicated subject with a long
+history. The fundamental ambiguity in these measurements is how to declare an "end" to the object
+and the start of the background. There are two general approaches to resolving this ambiguity. The
+first approach is to set the measurement aperture via some criterion (e.g., a fixed aperture size,
+a particular isophote, etc.) \mrb{cite}. The second approach is to rely on a model of the underlying object to
+essentially extrapolate the amount of flux at or below the background level \mrb{cite}. Each of these approaches
+have advantages and disadvantages related to not only their performance for specific analysis tasks
+like photometric calibration or photometric redshift measurement, but also related to their speed and
+reliability.
+
+Another fundamental ambiguity in these measurements is the blending of objects along the line-of-sight. This topic
+is of particular interest to next-generation surveys like the Vera C. Rubin Observatory
+Legacy Survey of Space and Time (LSST) due to the high fraction of objects that will be blended in Rubin
+data due to its depth \mrb{cite}. A variety of approaches to handling blending have been devised using
+model fits, the symmetries of the underlying objects, or both \mrb{}. Notably techniques powered by deep
+neural network architectures \mrb{cite} appear to show considerable promise due to their ability to learn
+complex priors about the diversity of astronomical objects.
+
+In addition to the physical ambiguities above, there are a number of important but more practical considerations in these measurements. First,
+modern astronomical surveys take many images of the same object in one or more pass bands. Any object
+measure needs to be able to account for the varying background levels and point-spread functions (PSFs)
+of the resulting dataset. Second, most modern cosmological surveys seek to use photometric redshifts as a
+key part of their analyses \mrb{cite}. For this specific analysis task, the effective aperture used in the
+measurement needs to be matched across different pass bands in order to obtain reliable object colors. Third,
+in modern cosmological surveys the objects are interest are generally low signal-to-noise and small. In this
+regime, complex model fitting methods need non-trivial priors or other tricks \mrb{cite SDSS, DES} in order
+to achieve stability. Finally, measurement speed, reliability/stability, and the ability to parallelize the
+code are important considerations for the datasets of billions of objects expected from surveys like the LSST.
+Even small measurement failure rates or small increases in running time can lead to large absolute changes
+in the cost and quality of the final data processing results.
+
+In this work, we describe the performance of a technique that uses a fixed weight function applied to
+the pre-PSF object in real-space to define the measurement aperture. With this weight function, we compute a set of
+real-space moments of the object's surface brightness profile, giving the flux, centroid, size, and shape. This technique is
+motivated by modern weak lensing shear measurement pipelines which require that the selection of objects
+in terms of their colors, sizes, and overall fluxes be done within the weak lensing measurement pipeline
+\mrb{cite} in order to control for shear selection effects. With this motivation in mind, our technique
+directly deconvolves the PSF from the object's image and then works entirely in Fourier-space to estimate
+the real-space moments. The measurement aperture can be fixed across bands, generating high-quality object
+colors for photometric redshift inference. The pipeline is also easily parallelized since the moments can be combined
+at the catalog level after extraction from the images. The technique, which we call \pgauss when used with a
+Gaussian aperture, is inspired by the Fourier-space moments of the Bayesian Fourier Domain shear measurement
+method of \mrb{cite}. This technique is also closely related to the \texttt{GaaP} method of \mrb{cite} which
+takes a somewhat similar approach using Shapelet expansions \mrb{cite}.
+
+Notably, obtaining reliable results with this technique requires careful attention to numerical
+artifacts, especially when performing the PSF deconvolution. We implement a variety of corrections including
+zero-padding and apodization to ensure stability. We also require that the final real-space measurement
+aperture be somewhat larger than the image PSF in order to suppress noise from the PSF deconvolution. This
+requirement is a fundamental trade-off since it can reduce the signal-to-noise of the overall measurement.
+In practice, this effect is small since the majority of objects suitable for a weak lensing
+analysis are small in the first place.
+
+Finally, in this work we largely ignore the effects of object blending for several reasons. First,
+object blending effects are largely common across the class of fixed aperture measurement methods.
+For example, a small object on top of a much larger background object will always have its flux boosted
+by a similar overall factor regardless of the specific choice of fixed measurement aperture. Second,
+most techniques to handle blending involve complicated model fitting, which is well beyond the scope
+of this work. Lastly, the weak lensing shear measurement technique that primarily motivates this work,
+\mdet, is insentiive to object blending.
+
+Our paper is arranged as follows. In ...
 
 \section{Pre-PSF Moment Measurement in Fourier-space}
 
@@ -55,13 +137,24 @@ f                          & = \int dx^2 I(x)W(x) =            & \int dk^2 I(k)W
 \langle x_{i}x_{j} \rangle & = \int dx^2 x_{i}x_{j} I(x)W(x) = & \int dk^2 I(k)\frac{dW(k)}{dk_{i}dk_{j}}\,.
 \end{eqnarray}
 With the above we can measure pre-PSF, real-space moments as follows:
-
 \begin{enumerate}
 \item Given an image of a galaxy $I(x)$ and the PSF $P(x)$, deconvolve the PSF in Fourier-space.
 \item Pick a filter function $W(x)$ that is large enough to suppress any noise from modes increased
       during the PSF deconvolution.
 \item Use the relationships above to measure the moments and shape of the object through sums in Fourier-space.
 \end{enumerate}
+Following \mrb{cite}, we define the follow quantities from the moments above
+\begin{eqnarray}
+M_{f} & = & f \nonumber \\
+M_{x_1} & = & \langle x_{1} \rangle/f \nonumber \\
+M_{x_2} & = & \langle x_{2} \rangle/f \nonumber \\
+T & = & (\langle x_{1}x_{1} \rangle + \langle x_{2}x_{2} \rangle)/f \nonumber \\
+M_{+} & = & (\langle x_{1}x_{1} \rangle - \langle x_{2}x_{2} \rangle)/f \nonumber \\
+M_{x} & = & 2 \langle x_{1}x_{2} \rangle/f\ . \nonumber
+\end{eqnarray}
+We can define shape measures through $e_1 = M_{+}/T$ and $e_2 = M_{x}/T$. The errors in the
+moments are computed through error propagation through the linear operations above assuming
+the pixel noise is uncorrelated in real-space between adjacent pixels.
 
 There are a fair number of technical details in the implementation that help to make it efficient and
 accurate. These are discussed below.
