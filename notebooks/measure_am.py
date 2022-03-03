@@ -324,7 +324,7 @@ def _meas(gal, psf, redshift, nse, aps, seed):
             if i == 0:
                 dtype = []
             else:
-                md = np.zeros(1, dtype=dtype)
+                md = np.zeros(len(flags), dtype=dtype)
             for cname, arr in [
                 ("flags", flags),
                 ("s2n", s2ns),
@@ -333,7 +333,7 @@ def _meas(gal, psf, redshift, nse, aps, seed):
                 ("Tratio", trs),
             ]:
                 if i == 0:
-                    dtype.append((cname, "f4", (len(aps),)))
+                    dtype.append((cname, "f4"))
                 else:
                     md[cname] = np.array(arr)
 
