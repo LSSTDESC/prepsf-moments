@@ -12,6 +12,7 @@ import joblib
 import tqdm
 from ngmix.admom import run_admom
 from ngmix.gaussmom import GaussMom
+from ngmix.prepsfmom import PGaussMom
 
 
 LOGGER = logging.getLogger(__name__)
@@ -237,16 +238,22 @@ def _meas(gal, psf, redshift, nse, aps, seed):
     tapflux = []
     ts2ns = []
     fflags = []
-    for i in range(2):
+    for i in range(3):
         if i == 0:
             fitter = GaussMom(1.2)
             mom = fitter.go(obs)
             mom_nn = fitter.go(obs_nn)
             psf_mom = fitter.go(obs.psf)
-        else:
+        elif i == 1:
             mom = run_admom(obs, guess, rng=rng)
             mom_nn = run_admom(obs_nn, guess, rng=rng)
             psf_mom = run_admom(obs.psf, guess, rng=rng)
+        else:
+            fitter = PGaussMom(1.5)
+            mom = fitter.go(obs)
+            mom_nn = fitter.go(obs_nn)
+            psf_mom = fitter.go(obs.psf)
+
         if psf_mom["flags"] == 0:
             psf_mom_t = psf_mom["T"]
         else:
@@ -283,7 +290,7 @@ def main():
 
     wldeblend_data = init_wldeblend(survey_bands="lsst-r")
 
-    aps = list(range(2))
+    aps = list(range(3))
     outputs = []
     with joblib.Parallel(n_jobs=-1, verbose=10, batch_size=2) as par:
         for chunk in tqdm.trange(n_chunks):
