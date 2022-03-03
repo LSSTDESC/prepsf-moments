@@ -251,6 +251,7 @@ def _meas(gal, psf, redshift, nse, aps, seed):
         fflags = []
         mdet_step = []
         maps = []
+        mdet_redshift = []
         for ap in aps:
             if ap == 0:
                 fitter = GaussMom(1.2)
@@ -300,6 +301,7 @@ def _meas(gal, psf, redshift, nse, aps, seed):
                 trs.append(mom["Tratio"])
                 mdet_step.append(k)
                 maps.append(ap)
+                mdet_redshift.append(redshift)
 
         for i in range(2):
             if i == 0:
@@ -331,6 +333,7 @@ def _meas(gal, psf, redshift, nse, aps, seed):
                 ("e1", g1s),
                 ("e1_err", g1errs),
                 ("Tratio", trs),
+                ("redshift", mdet_redshift),
             ]:
                 if i == 0:
                     dtype.append((cname, "f4"))
