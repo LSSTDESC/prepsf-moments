@@ -14,6 +14,7 @@ from ngmix.admom import run_admom
 from ngmix.gaussmom import GaussMom
 from ngmix.prepsfmom import PGaussMom
 from ngmix.metacal import get_all_metacal
+from prepsf_admom import PrePSFAdmom
 
 
 LOGGER = logging.getLogger(__name__)
@@ -260,7 +261,11 @@ def _meas(gal, psf, redshift, nse, aps, seed):
             elif ap == 1:
                 mom = run_admom(obs, guess, rng=rng)
                 mom_nn = run_admom(obs_nn, guess, rng=rng)
-            else:
+            elif ap == 2:
+                fitter = PrePSFAdmom(min_fwhm=1.5, delta_fwhm=0.05)
+                mom = fitter.go(obs, guess)
+                mom_nn = fitter.go(obs_nn, guess)
+            elif ap == 3:
                 fitter = PGaussMom(1.5)
                 mom = fitter.go(obs)
                 mom_nn = fitter.go(obs_nn)
@@ -281,7 +286,11 @@ def _meas(gal, psf, redshift, nse, aps, seed):
                 elif ap == 1:
                     mom = run_admom(mcal_obs, guess, rng=rng)
                     psf_mom = run_admom(mcal_obs.psf, guess, rng=rng)
-                else:
+                elif ap == 2:
+                    fitter = PrePSFAdmom(min_fwhm=1.5, delta_fwhm=0.05)
+                    mom = fitter.go(mcal_obs, guess)
+                    psf_mom = fitter.go(mcal_obs.psf, guess, no_psf=True)
+                elif ap == 3:
                     fitter = PGaussMom(1.5)
                     mom = fitter.go(mcal_obs)
                     psf_mom = fitter.go(mcal_obs.psf, no_psf=True)
