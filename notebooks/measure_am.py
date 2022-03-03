@@ -13,6 +13,7 @@ import tqdm
 from ngmix.admom import run_admom
 from ngmix.gaussmom import GaussMom
 from ngmix.prepsfmom import PGaussMom
+from ngmix.metacal import get_all_metacal
 
 
 LOGGER = logging.getLogger(__name__)
@@ -224,60 +225,130 @@ def _meas(gal, psf, redshift, nse, aps, seed):
         rng,
     )
 
-    s2ns = []
-    g1s = []
-    ts = []
-    trs = []
-    flags = []
-    g1errs = []
-    redshifts = []
-    fluxes = []
-    flux_errs = []
-    terr = []
-    tflux = []
-    tapflux = []
-    ts2ns = []
-    fflags = []
-    for i in range(3):
-        if i == 0:
-            fitter = GaussMom(1.2)
-            mom = fitter.go(obs)
-            mom_nn = fitter.go(obs_nn)
-            psf_mom = fitter.go(obs.psf)
-        elif i == 1:
-            mom = run_admom(obs, guess, rng=rng)
-            mom_nn = run_admom(obs_nn, guess, rng=rng)
-            psf_mom = run_admom(obs.psf, guess, rng=rng)
-        else:
-            fitter = PGaussMom(1.5)
-            mom = fitter.go(obs)
-            mom_nn = fitter.go(obs_nn)
-            psf_mom = fitter.go(obs.psf, no_psf=True)
+    try:
+        mcal_res = get_all_metacal(
+            obs,
+            psf='fitgauss',
+            fixnoise=True,
+            rng=rng,
+            types=["noshear", "1p", "1m"],
+        )
+        for k, v in mcal_res.items():
+            if v is None:
+                raise RuntimeError("bad mcal result!")
 
-        if psf_mom["flags"] == 0:
-            psf_mom_t = psf_mom["T"]
-        else:
-            psf_mom_t = np.nan
+        s2ns = []
+        g1s = []
+        trs = []
+        flags = []
+        g1errs = []
+        redshifts = []
+        fluxes = []
+        flux_errs = []
+        tflux = []
+        tapflux = []
+        ts2ns = []
+        fflags = []
+        mdet_step = []
+        maps = []
+        for ap in aps:
+            if ap == 0:
+                fitter = GaussMom(1.2)
+                mom = fitter.go(obs)
+                mom_nn = fitter.go(obs_nn)
+            elif ap == 1:
+                mom = run_admom(obs, guess, rng=rng)
+                mom_nn = run_admom(obs_nn, guess, rng=rng)
+            else:
+                fitter = PGaussMom(1.5)
+                mom = fitter.go(obs)
+                mom_nn = fitter.go(obs_nn)
 
-        flags.append(mom["flags"] | psf_mom["flags"])
-        s2ns.append(mom["s2n"])
-        g1s.append(mom["e1"])
-        g1errs.append(mom["e_err"][0])
-        ts.append(mom["T"])
-        trs.append(mom["T"]/psf_mom_t)
-        redshifts.append(redshift)
-        fluxes.append(mom["flux"])
-        flux_errs.append(mom["flux_err"])
-        terr.append(mom["T_err"])
-        tflux.append(true_flux)
-        tapflux.append(mom_nn["flux"])
-        ts2ns.append(mom_nn["flux"]/mom_nn["flux_err"])
-        fflags.append(mom["flux_flags"])
+            fluxes.append(mom["flux"])
+            flux_errs.append(mom["flux_err"])
+            redshifts.append(redshift)
+            tflux.append(true_flux)
+            tapflux.append(mom_nn["flux"])
+            ts2ns.append(mom_nn["flux"]/mom_nn["flux_err"])
+            fflags.append(mom["flux_flags"])
 
-    return (
-        s2ns, g1s, flags, ts, trs, g1errs, redshifts, fluxes, flux_errs, terr,
-        tflux, tapflux, ts2ns, fflags,
-    )
+            for k, mcal_obs in mcal_res.items():
+                if ap == 0:
+                    fitter = GaussMom(1.2)
+                    mom = fitter.go(mcal_obs)
+                    psf_mom = fitter.go(mcal_obs.psf)
+                elif ap == 1:
+                    mom = run_admom(mcal_obs, guess, rng=rng)
+                    psf_mom = run_admom(mcal_obs.psf, guess, rng=rng)
+                else:
+                    fitter = PGaussMom(1.5)
+                    mom = fitter.go(mcal_obs)
+                    psf_mom = fitter.go(mcal_obs.psf, no_psf=True)
+
+                if psf_mom["flags"] == 0:
+                    psf_mom_t = psf_mom["T"]
+                else:
+                    psf_mom_t = np.nan
+
+                mom["flags"] = mom["flags"] | psf_mom["flags"]
+                mom["Tratio"] = mom["T"] / psf_mom_t
+
+                flags.append(mom["flags"])
+                s2ns.append(mom["s2n"])
+                g1s.append(mom["e1"])
+                g1errs.append(mom["e_err"][0])
+                trs.append(mom["Tratio"])
+                mdet_step.append(k)
+                maps.append(ap)
+
+        for i in range(2):
+            if i == 0:
+                dtype = []
+            else:
+                d = np.zeros(1, dtype=dtype)
+            for cname, arr in [
+                ("redshift", redshifts),
+                ("flux", fluxes),
+                ("flux_err", flux_errs),
+                ("true_flux", tflux),
+                ("true_ap_flux", tapflux),
+                ("true_s2n", ts2ns),
+                ("flux_flags", fflags),
+            ]:
+                if i == 0:
+                    dtype.append((cname, "f4", (len(aps),)))
+                else:
+                    d[cname] = np.array(arr)
+
+        for i in range(2):
+            if i == 0:
+                dtype = []
+            else:
+                md = np.zeros(1, dtype=dtype)
+            for cname, arr in [
+                ("flags", flags),
+                ("s2n", s2ns),
+                ("e1", g1s),
+                ("g1errs", g1errs),
+                ("Tratio", trs),
+            ]:
+                if i == 0:
+                    dtype.append((cname, "f4", (len(aps),)))
+                else:
+                    md[cname] = np.array(arr)
+
+            if i == 0:
+                dtype.append(("mdet_step", "U6"))
+                dtype.append(("ap", "f4"))
+            else:
+                md["mdet_step"] = mdet_step
+                md["ap"] = maps
+
+        return d, md
+
+    except Exception as e:
+        print("ERROR: " + repr(e), flush=True)
+        return None
 
 
 def main():
@@ -309,46 +380,24 @@ def main():
                         gal, psf, redshift, wldeblend_data.noise,
                         aps, rng.randint(low=1, high=2**29))
                     )
+                outputs.extend([o for o in par(jobs) if o is not None])
 
-                outputs.extend(par(jobs))
-
-            d = np.zeros(len(outputs), dtype=[
-                ("s2n", "f4", (len(aps),)),
-                ("e1", "f4", (len(aps),)),
-                ("T", "f4", (len(aps),)),
-                ("Tratio", "f4", (len(aps),)),
-                ("flags", "i4", (len(aps),)),
-                ("e1_err", "i4", (len(aps),)),
-                ("redshift", "f4", (len(aps),)),
-                ("flux", "f4", (len(aps),)),
-                ("flux_err", "f4", (len(aps),)),
-                ("T_err", "f4", (len(aps),)),
-                ("true_flux", "f4", (len(aps),)),
-                ("true_ap_flux", "f4", (len(aps),)),
-                ("true_s2n", "f4", (len(aps),)),
-                ("flux_flags", "i4", (len(aps),)),
-            ])
-            _o = np.array(outputs)
-            d["s2n"] = _o[:, 0]
-            d["e1"] = _o[:, 1]
-            d["flags"] = _o[:, 2]
-            d["T"] = _o[:, 3]
-            d["Tratio"] = _o[:, 4]
-            d["e1_err"] = _o[:, 5]
-            d["redshift"] = _o[:, 6]
-            d["flux"] = _o[:, 7]
-            d["flux_err"] = _o[:, 8]
-            d["T_err"] = _o[:, 9]
-            d["true_flux"] = _o[:, 10]
-            d["true_ap_flux"] = _o[:, 11]
-            d["true_s2n"] = _o[:, 12]
-            d["flux_flags"] = _o[:, 13]
-
+            d = np.concatenate([o[0] for o in outputs], axis=0)
             fitsio.write(
                 "./results_wmom_am/meas_seed%d.fits" % seed,
                 d, extname="data", clobber=True)
             fitsio.write(
                 "./results_wmom_am/meas_seed%d.fits" % seed,
+                np.array(aps),
+                extname="aps",
+            )
+
+            d = np.concatenate([o[1] for o in outputs], axis=0)
+            fitsio.write(
+                "./results_wmom_am/meas_mdet_seed%d.fits" % seed,
+                d, extname="data", clobber=True)
+            fitsio.write(
+                "./results_wmom_am/meas_mdet_seed%d.fits" % seed,
                 np.array(aps),
                 extname="aps",
             )
