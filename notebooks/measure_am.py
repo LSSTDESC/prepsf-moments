@@ -252,7 +252,7 @@ def _meas(gal, psf, redshift, nse, aps, seed):
             fitter = PGaussMom(1.5)
             mom = fitter.go(obs)
             mom_nn = fitter.go(obs_nn)
-            psf_mom = fitter.go(obs.psf)
+            psf_mom = fitter.go(obs.psf, no_psf=True)
 
         if psf_mom["flags"] == 0:
             psf_mom_t = psf_mom["T"]
