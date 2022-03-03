@@ -276,7 +276,7 @@ def main():
 
     wldeblend_data = init_wldeblend(survey_bands="lsst-r")
 
-    aps = np.linspace(1.25, 2.75, 25)
+    aps = [10]
     outputs = []
     with joblib.Parallel(n_jobs=-1, verbose=10, batch_size=2) as par:
         for chunk in tqdm.trange(n_chunks):
