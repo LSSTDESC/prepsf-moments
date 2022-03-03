@@ -240,9 +240,9 @@ def _meas(gal, psf, redshift, nse, aps, seed):
     for i in range(2):
         if i == 0:
             fitter = GaussMom(1.2)
-            mom = fitter.go(obs, guess)
-            mom_nn = fitter.go(obs_nn, guess)
-            psf_mom = fitter.go(obs.psf, guess)
+            mom = fitter.go(obs)
+            mom_nn = fitter.go(obs_nn)
+            psf_mom = fitter.go(obs.psf)
         else:
             mom = run_admom(obs, guess, rng=rng)
             mom_nn = run_admom(obs_nn, guess, rng=rng)
