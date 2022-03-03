@@ -338,7 +338,7 @@ def _meas(gal, psf, redshift, nse, aps, seed):
                     md[cname] = np.array(arr)
 
             if i == 0:
-                dtype.append(("mdet_step", "U6"))
+                dtype.append(("mdet_step", "U7"))
                 dtype.append(("ap", "f4"))
             else:
                 md["mdet_step"] = mdet_step
