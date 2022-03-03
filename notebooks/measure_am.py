@@ -373,7 +373,7 @@ def main():
 
     wldeblend_data = init_wldeblend(survey_bands="lsst-r")
 
-    aps = list(range(3))
+    aps = list(range(4))
     outputs = []
     with joblib.Parallel(n_jobs=-1, verbose=10, batch_size=2) as par:
         for chunk in tqdm.trange(n_chunks):
