@@ -338,10 +338,10 @@ def main():
             d["flux_flags"] = _o[:, 13]
 
             fitsio.write(
-                "./results__wmom_am/meas_seed%d.fits" % seed,
+                "./results_wmom_am/meas_seed%d.fits" % seed,
                 d, extname="data", clobber=True)
             fitsio.write(
-                "./results__wmom_am/meas_seed%d.fits" % seed, aps, extname="aps"
+                "./results_wmom_am/meas_seed%d.fits" % seed, aps, extname="aps"
             )
 
 
