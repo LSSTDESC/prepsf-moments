@@ -15,6 +15,7 @@ from ngmix.gaussmom import GaussMom
 from ngmix.prepsfmom import PGaussMom
 from ngmix.metacal import get_all_metacal
 from prepsf_admom import PrePSFAdmom
+from ngmix_maxlike import run_maxlike
 
 
 LOGGER = logging.getLogger(__name__)
@@ -294,6 +295,11 @@ def _meas(gal, psf, redshift, nse, aps, seed):
                     fitter = PGaussMom(1.5)
                     mom = fitter.go(mcal_obs)
                     psf_mom = fitter.go(mcal_obs.psf, no_psf=True)
+                elif ap == 4:
+                    mom = run_maxlike(mcal_obs, rng=rng)
+                    psf_mom = mcal_obs.psf.meta["result"]
+                    mom["e1"] = mom["g"][0]
+                    mom["e_err"] = mom["g_err"]
 
                 if psf_mom["flags"] == 0:
                     psf_mom_t = psf_mom["T"]
@@ -373,7 +379,7 @@ def main():
 
     wldeblend_data = init_wldeblend(survey_bands="lsst-r")
 
-    aps = list(range(4))
+    aps = list(range(5))
     outputs = []
     with joblib.Parallel(n_jobs=-1, verbose=10, batch_size=2) as par:
         for chunk in tqdm.trange(n_chunks):
