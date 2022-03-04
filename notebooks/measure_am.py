@@ -18,6 +18,7 @@ from prepsf_admom import PrePSFAdmom
 from ngmix_maxlike import run_maxlike
 
 
+PGAUSS_AP = 2.0
 LOGGER = logging.getLogger(__name__)
 WLDeblendData = collections.namedtuple(
     'WLDeblendData',
@@ -263,11 +264,11 @@ def _meas(gal, psf, redshift, nse, aps, seed):
                 mom = run_admom(obs, guess, rng=rng)
                 mom_nn = run_admom(obs_nn, guess, rng=rng)
             elif ap == 2:
-                fitter = PrePSFAdmom(min_fwhm=1.5, delta_fwhm=0.05)
+                fitter = PrePSFAdmom(min_fwhm=PGAUSS_AP, delta_fwhm=0.05)
                 mom = fitter.go(obs, guess)
                 mom_nn = fitter.go(obs_nn, guess)
             elif ap == 3:
-                fitter = PGaussMom(1.5)
+                fitter = PGaussMom(PGAUSS_AP)
                 mom = fitter.go(obs)
                 mom_nn = fitter.go(obs_nn)
 
@@ -288,11 +289,11 @@ def _meas(gal, psf, redshift, nse, aps, seed):
                     mom = run_admom(mcal_obs, guess, rng=rng)
                     psf_mom = run_admom(mcal_obs.psf, guess, rng=rng)
                 elif ap == 2:
-                    fitter = PrePSFAdmom(min_fwhm=1.5, delta_fwhm=0.05)
+                    fitter = PrePSFAdmom(min_fwhm=PGAUSS_AP, delta_fwhm=0.05)
                     mom = fitter.go(mcal_obs, guess)
                     psf_mom = fitter.go(mcal_obs.psf, guess, no_psf=True)
                 elif ap == 3:
-                    fitter = PGaussMom(1.5)
+                    fitter = PGaussMom(PGAUSS_AP)
                     mom = fitter.go(mcal_obs)
                     psf_mom = fitter.go(mcal_obs.psf, no_psf=True)
                 elif ap == 4:
