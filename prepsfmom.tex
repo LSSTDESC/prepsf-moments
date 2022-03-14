@@ -240,6 +240,24 @@ them early on in the code. Overall, it runs at a speed of ${\cal O}(10s)$ of mil
 object depending on the stamp size \mrb{check this again}. Our implementation is available in the
 \texttt{ngmix} software package.
 
+\subsection{Adaptive Pre-PSF Moments}
+
+We can extend our technique to compute adaptive pre-PSF moments as well. Our algorithm is exactly like
+the original adaptive moments algorithm \mrb{cite}, except that we modify the weight function at each step
+in order to force it to smoothly approach a round, minimum sized Gaussian weight as the size of the
+kernel gets smaller. This modification is needed to control the noise in our moments estimates due to
+PSF deconvolution. Specifically, the weight function shape $e_{1,2}$ and $T$ is transformed as
+
+\begin{eqnarray}
+f & = & {\cal S}(T/(1 + 2 |e|), T_{\rm min}, \Delta_T) \\
+e_{1,2} & \rightarrow & f \times e_{1,2} \\
+T & \rightarrow & fT + (1-f)T_{\rm min}
+\end{eqnarray}
+where $T_{\rm min}$ is the minimum allowed kernel size and $\Delta_T$ specifies the region over which
+the function ${\cal S}(T, T_{\rm min}, \Delta_T)$ goes from 0 when $T=T_{\rm min}$ to 1 at $T\geq T_{\rm min} + \Delta_T$.
+We use the same cumulative triweight kernel as above with $h=\Delta_T/6$ and the mean adjust to satisfy the limiting
+behavior for ${\cal S}$.
+
 \section{Results}
 
 In this section, we focus on the results with Gaussian apertures, leaving a study of
@@ -304,6 +322,17 @@ larger apertures which increase the sample size and smaller apertures which decr
 the shape noise. We find that the median redshift of the sample has a fairly broad peak
 around the optimal aperture, indicating that the optimal aperture in terms of the total
 shear variance is not sacrificing redshift depth.
+
+
+\begin{figure}
+  \centering
+  \vspace{1em}
+  \includegraphics[width=\columnwidth]{figures/optap_depth.pdf}
+  \caption{
+    Optimal Aperture for Depth fot Pre-PSF Gaussian Moments.
+    \label{fig:opap_depth}
+  }
+\end{figure}
 
 
 \subsection{Error Properties for Isolated Objects}
