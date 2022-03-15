@@ -1,6 +1,5 @@
 import os
 import logging
-import collections
 import sys
 
 import ngmix
@@ -14,6 +13,7 @@ import joblib
 from mattspy import BNLCondorParallel
 from shear_meas import meas_m_c
 from metadetect.metadetect import do_metadetect
+from wldeblend_sim import init_wldeblend, get_gal_wldeblend
 
 
 BACKEND = "bnl"
@@ -35,11 +35,11 @@ nodet_flags: 33554432  # 2**25 is GAIA stars
 
 bmask_flags: 1610612736  # 2**29 | 2**30 edge in either MEDS of pizza cutter
 
-mfrac_fwhm: 1.5  # arcsec
+mfrac_fwhm: 1.8  # arcsec
 mask_region: 1
 
 weight:
-  fwhm: 1.5  # arcsec
+  fwhm: 1.8  # arcsec
 
 meds:
   box_padding: 2
@@ -52,167 +52,10 @@ meds:
 
 
 LOGGER = logging.getLogger(__name__)
-WLDeblendData = collections.namedtuple(
-    'WLDeblendData',
-    [
-        'cat', 'survey_name', 'bands', 'surveys',
-        'builders', 'total_sky', 'noise', 'ngal_per_arcmin2',
-        'psf_fwhm', 'pixel_scale',
-    ],
-)
 
 
-def _cached_catalog_read():
-    fname = os.path.join(
-        os.environ.get('CATSIM_DIR', '.'),
-        'OneDegSq.fits',
-    )
-    return fitsio.read(fname)
-
-
-def init_wldeblend(*, survey_bands):
-    """Initialize weak lensing deblending survey data.
-
-    Parameters
-    ----------
-    survey_bands : str
-        The name of the survey followed by the bands like 'des-riz', 'lsst-iz', etc.
-
-    Returns
-    -------
-    data : WLDeblendData
-        Namedtuple with data for making galaxies via the weak lesning
-        deblending package.
-    """
-    survey_name, bands = survey_bands.split("-")
-    bands = [b for b in bands]
-    LOGGER.info('simulating survey: %s', survey_name)
-    LOGGER.info('simulating bands: %s', bands)
-
-    if survey_name not in ["des", "lsst"]:
-        raise RuntimeError(
-            "Survey for wldeblend must be one of 'des' or 'lsst'"
-            " - got %s!" % survey_name
-        )
-
-    if survey_name == "lsst":
-        scale = 0.2
-    elif survey_name == "des":
-        scale = 0.263
-
-    # guard the import here
-    import descwl
-
-    # set the exposure times
-    if survey_name == 'des':
-        exptime = 90 * 10
-    else:
-        exptime = None
-
-    wldeblend_cat = _cached_catalog_read()
-
-    surveys = []
-    builders = []
-    total_sky = 0.0
-    for iband, band in enumerate(bands):
-        # make the survey and code to build galaxies from it
-        pars = descwl.survey.Survey.get_defaults(
-            survey_name=survey_name.upper(),
-            filter_band=band)
-
-        pars['survey_name'] = survey_name
-        pars['filter_band'] = band
-        pars['pixel_scale'] = scale
-
-        # note in the way we call the descwl package, the image width
-        # and height is not actually used
-        pars['image_width'] = 100
-        pars['image_height'] = 100
-
-        # reset the exposure times if we want
-        if exptime is not None:
-            pars['exposure_time'] = exptime
-
-        # some versions take in the PSF and will complain if it is not
-        # given
-        try:
-            _svy = descwl.survey.Survey(**pars)
-        except Exception:
-            pars['psf_model'] = None
-            _svy = descwl.survey.Survey(**pars)
-
-        surveys.append(_svy)
-        builders.append(descwl.model.GalaxyBuilder(
-            survey=surveys[iband],
-            no_disk=False,
-            no_bulge=False,
-            no_agn=False,
-            verbose_model=False))
-
-        total_sky += surveys[iband].mean_sky_level
-
-    noise = np.sqrt(total_sky)
-
-    if survey_name == "lsst":
-        psf_fwhm = 0.85
-    elif survey_name == "des":
-        psf_fwhm = 1.1
-
-    # when we sample from the catalog, we need to pull the right number
-    # of objects. Since the default catalog is one square degree
-    # and we fill a fraction of the image, we need to set the
-    # base source density `ngal`. This is in units of number per
-    # square arcminute.
-    ngal_per_arcmin2 = wldeblend_cat.size / (60 * 60)
-
-    LOGGER.info('catalog density: %f per sqr arcmin', ngal_per_arcmin2)
-
-    return WLDeblendData(
-        wldeblend_cat, survey_name, bands, surveys,
-        builders, total_sky, noise, ngal_per_arcmin2,
-        psf_fwhm, scale,
-    )
-
-
-def get_gal_wldeblend(*, rng, data):
-    """Draw a galaxy from the weak lensing deblending package.
-
-    Parameters
-    ----------
-    rng : np.random.RandomState
-        An RNG to use for making galaxies.
-    data : WLDeblendData
-        Namedtuple with data for making galaxies via the weak lesning
-        deblending package.
-
-    Returns
-    -------
-    gal : galsim Object
-        The galaxy as a galsim object.
-    psf : galsim Object
-        The PSF as a galsim object.
-    """
-    if USE_EXP:
-        gal = galsim.Exponential(half_light_radius=0.5) * MIN_FLUX
-    else:
-        while True:
-            rind = rng.choice(data.cat.size)
-            angle = rng.uniform() * 360
-            pa_angle = rng.uniform() * 360
-
-            data.cat['pa_disk'][rind] = pa_angle
-            data.cat['pa_bulge'][rind] = pa_angle
-
-            gal = galsim.Sum([
-                data.builders[band].from_catalog(
-                    data.cat[rind], 0, 0,
-                    data.surveys[band].filter_band).model.rotate(
-                        angle * galsim.degrees)
-                for band in range(len(data.builders))
-            ])
-            if gal.flux > MIN_FLUX:
-                break
-
+def get_gal_exp(*, rng, data):
+    gal = galsim.Exponential(half_light_radius=0.5) * MIN_FLUX
     return (
         gal * FLUX_FAC,
         galsim.Kolmogorov(fwhm=data.psf_fwhm),
@@ -373,8 +216,12 @@ def _meas_many(seed, n_per_chunk, sep):
 
     output = []
     for seed in tqdm.tqdm(seeds, ncols=79, desc="pair loop"):
-        gal1, psf = get_gal_wldeblend(rng=rng, data=wldeblend_data)
-        gal2, _ = get_gal_wldeblend(rng=rng, data=wldeblend_data)
+        if USE_EXP:
+            gal1, psf = get_gal_exp(rng=rng, data=wldeblend_data)
+            gal2, _ = get_gal_exp(rng=rng, data=wldeblend_data)
+        else:
+            gal1, psf = get_gal_wldeblend(rng=rng, data=wldeblend_data)
+            gal2, _ = get_gal_wldeblend(rng=rng, data=wldeblend_data)
         res = _meas_one(gal1, gal2, psf, wldeblend_data.noise, seed, sep)
         if res is not None:
             output.append(res)
