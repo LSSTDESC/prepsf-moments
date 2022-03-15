@@ -9,6 +9,7 @@ import tqdm
 from ngmix.metacal import get_all_metacal
 from ngmix.prepsfmom import PGaussMom
 from wldeblend_sim import init_wldeblend, get_gal_wldeblend, make_ngmix_obs
+from ngmix_maxlike import run_maxlike
 
 LOGGER = logging.getLogger(__name__)
 
@@ -39,6 +40,7 @@ def _meas(gal, psf, redshift, nse, pixel_scale, aps, seed):
         redshifts = []
         maps = []
         msteps = []
+        kinds = []
         for ap in aps:
             for step, mcal_obs in mcal_res.items():
                 mom = PGaussMom(ap).go(mcal_obs)
@@ -56,6 +58,28 @@ def _meas(gal, psf, redshift, nse, pixel_scale, aps, seed):
                 redshifts.append(redshift)
                 maps.append(ap)
                 msteps.append(step)
+                kinds.append("pgauss")
+
+        for step, mcal_obs in mcal_res.items():
+            mom = run_maxlike(mcal_obs, rng=rng)
+            psf_mom = mcal_obs.psf.meta["result"]
+            mom["e1"] = mom["g"][0]
+            mom["e_err"] = mom["g_err"]
+
+            if psf_mom["flags"] == 0:
+                psf_mom_t = psf_mom["T"]
+            else:
+                psf_mom_t = np.nan
+
+            flags.append(mom["flags"] | psf_mom["flags"])
+            s2ns.append(mom["s2n"])
+            g1s.append(mom["e1"])
+            g1errs.append(mom["e_err"][0])
+            trs.append(mom["T"]/psf_mom_t)
+            redshifts.append(redshift)
+            maps.append(-1)
+            msteps.append(step)
+            kinds.append("mgauss")
 
         for i in range(2):
             if i == 0:
@@ -78,9 +102,11 @@ def _meas(gal, psf, redshift, nse, pixel_scale, aps, seed):
             if i == 0:
                 dtype.append(("mdet_step", "U7"))
                 dtype.append(("ap", "f4"))
+                dtype.append(("kind", "U7"))
             else:
                 md["mdet_step"] = msteps
                 md["ap"] = maps
+                md["kind"] = kinds
 
         return md
 
