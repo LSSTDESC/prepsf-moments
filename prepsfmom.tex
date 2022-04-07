@@ -44,9 +44,10 @@
   deterministically, requiring only two fast-fourier transforms (FFTs) and some sums
   over the results. This pipeline additionally includes zero-padding and apodization
   corrections in order to control FFT artifacts which can arise during the
-  deconvolution. We demonstrate that for isolated objects, we can recover the underlying
-  true aperture flux to better than a fraction of a percent and report flux errors that
-  are accurate to better than a few percent. We additionally estimate the optimal
+  deconvolution. We demonstrate that for isolated objects with Gaussian pixel noise, 
+  we can recover the underlying true aperture flux to better than a fraction of a percent 
+  and report flux errors that are accurate to better than a few percent. These results imply that 
+  our pre-PSF object measure will report correct errors for object colors. We additionally estimate the optimal
   aperture for Vera C. Rubin Observatory weak lensing studies ($\approx1.8$'' FWHM) and
   demonstrate that the \mdet weak lensing shear estimator is unbiased when coupled with
   the \pgauss shape estimate. Due to the fact that our measurement aperture is fixed,
