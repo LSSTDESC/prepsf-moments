@@ -8,6 +8,8 @@ import joblib
 import tqdm
 from ngmix.metacal import get_all_metacal
 from ngmix.prepsfmom import PGaussMom
+from ngmix.admom import run_admom
+from ngmix.gaussmom import GaussMom
 from wldeblend_sim import init_wldeblend, get_gal_wldeblend, make_ngmix_obs
 from ngmix_maxlike import run_maxlike
 
@@ -80,6 +82,48 @@ def _meas(gal, psf, redshift, nse, pixel_scale, aps, seed):
             maps.append(-1)
             msteps.append(step)
             kinds.append("mgauss")
+
+        for step, mcal_obs in mcal_res.items():
+            mom = run_admom(mcal_obs, 1.0, rng=rng)
+            psf_mom = run_admom(mcal_obs.psf, 1.0, rng=rng)
+            mom["e1"] = mom["g"][0]
+            mom["e_err"] = mom["g_err"]
+
+            if psf_mom["flags"] == 0:
+                psf_mom_t = psf_mom["T"]
+            else:
+                psf_mom_t = np.nan
+
+            flags.append(mom["flags"] | psf_mom["flags"])
+            s2ns.append(mom["s2n"])
+            g1s.append(mom["e1"])
+            g1errs.append(mom["e_err"][0])
+            trs.append(mom["T"]/psf_mom_t)
+            redshifts.append(redshift)
+            maps.append(-1)
+            msteps.append(step)
+            kinds.append("admom")
+
+        for step, mcal_obs in mcal_res.items():
+            mom = GaussMom(1.2).go(mcal_obs)
+            psf_mom = GaussMom(1.2).go(mcal_obs.psf)
+            mom["e1"] = mom["g"][0]
+            mom["e_err"] = mom["g_err"]
+
+            if psf_mom["flags"] == 0:
+                psf_mom_t = psf_mom["T"]
+            else:
+                psf_mom_t = np.nan
+
+            flags.append(mom["flags"] | psf_mom["flags"])
+            s2ns.append(mom["s2n"])
+            g1s.append(mom["e1"])
+            g1errs.append(mom["e_err"][0])
+            trs.append(mom["T"]/psf_mom_t)
+            redshifts.append(redshift)
+            maps.append(-1)
+            msteps.append(step)
+            kinds.append("wmom")
 
         for i in range(2):
             if i == 0:
