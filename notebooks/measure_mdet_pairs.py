@@ -259,13 +259,13 @@ noise cancel c   : {c: f} +/- {csd: f} [1e-5, 3-sigma]""".format(
 
     if USE_EXP:
         fn = (
-            "./mdet_results/meas_exp_"
+            "./results_ndet_pairs/meas_exp_"
             "fluxfac%0.1f_sep%0.3f_seed%d.fits" % (
                 FLUX_FAC, sep, seed
             )
         )
     else:
-        fn = "./mdet_results/meas_fluxfac%0.1f_sep%0.3f_seed%d.fits" % (
+        fn = "./results_mdet_pairs/meas_fluxfac%0.1f_sep%0.3f_seed%d.fits" % (
             FLUX_FAC, sep, seed
         )
 
