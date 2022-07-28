@@ -68,7 +68,7 @@ def main():
     seed = np.random.randint(low=1, high=2**29)
     rng = np.random.RandomState(seed=seed)
 
-    os.makedirs("./results", exist_ok=True)
+    os.makedirs("./results_pgauss_noise", exist_ok=True)
 
     wldeblend_data = init_wldeblend(survey_bands="lsst-r")
 
@@ -129,9 +129,16 @@ def main():
             d["flux_flags"] = _o[:, 13]
 
             fitsio.write(
-                "./results/meas_seed%d.fits" % seed,
-                d, extname="data", clobber=True)
-            fitsio.write("./results/meas_seed%d.fits" % seed, aps, extname="aps")
+                "./results_pgauss_noise/meas_seed%d.fits" % seed,
+                d,
+                extname="data",
+                clobber=True,
+            )
+            fitsio.write(
+                "./results_pgauss_noise/meas_seed%d.fits" % seed,
+                aps,
+                extname="aps",
+            )
 
 
 if __name__ == "__main__":

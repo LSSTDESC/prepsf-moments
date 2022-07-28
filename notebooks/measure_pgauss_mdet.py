@@ -175,7 +175,7 @@ def main():
     seed = np.random.randint(low=1, high=2**29)
     rng = np.random.RandomState(seed=seed)
 
-    os.makedirs("./results_pgauss_mdet", exist_ok=True)
+    os.makedirs("./results_shear_prec", exist_ok=True)
 
     wldeblend_data = init_wldeblend(survey_bands="lsst-r")
 
@@ -199,10 +199,10 @@ def main():
 
             d = np.concatenate(outputs, axis=0)
             fitsio.write(
-                "./results_pgauss_mdet/meas_seed%d.fits" % seed,
+                "./results_shear_prec/meas_seed%d.fits" % seed,
                 d, extname="data", clobber=True)
             fitsio.write(
-                "./results_pgauss_mdet/meas_seed%d.fits" % seed,
+                "./results_shear_prect/meas_seed%d.fits" % seed,
                 aps, extname="aps")
 
 
