@@ -230,7 +230,7 @@ def _meas_many(seed, n_per_chunk, sep):
 
 
 def _process_outputs(outputs, sep, seed):
-    os.makedirs("./mdet_results", exist_ok=True)
+    os.makedirs("./results_mdet_pairs", exist_ok=True)
 
     d = np.array(outputs, dtype=[
         ("g1", "f8"),
@@ -259,7 +259,7 @@ noise cancel c   : {c: f} +/- {csd: f} [1e-5, 3-sigma]""".format(
 
     if USE_EXP:
         fn = (
-            "./results_ndet_pairs/meas_exp_"
+            "./results_mdet_pairs/meas_exp_"
             "fluxfac%0.1f_sep%0.3f_seed%d.fits" % (
                 FLUX_FAC, sep, seed
             )
