@@ -1,3 +1,4 @@
+import traceback
 import os
 import logging
 import sys
@@ -166,6 +167,7 @@ def _meas(gal, psf, redshift, nse, pixel_scale, aps, seed, smooths):
 
     except Exception as e:
         print("ERROR: " + repr(e), flush=True)
+        print("TRACEBACK: " + traceback.format_exc(), flush=True)
         return None
 
 
