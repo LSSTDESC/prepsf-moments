@@ -179,7 +179,7 @@ def main():
 
     wldeblend_data = init_wldeblend(survey_bands="lsst-r")
 
-    aps = np.linspace(0.75, 2.25, 7)
+    aps = np.array([1.2, 1.8, 2.0])
     smooths = np.linspace(0.0, 1.75, 8)
     outputs = []
     with joblib.Parallel(n_jobs=-1, verbose=10, batch_size=2) as par:
@@ -202,8 +202,11 @@ def main():
                 "./results_shear_prec/meas_seed%d.fits" % seed,
                 d, extname="data", clobber=True)
             fitsio.write(
-                "./results_shear_prect/meas_seed%d.fits" % seed,
+                "./results_shear_prec/meas_seed%d.fits" % seed,
                 aps, extname="aps")
+            fitsio.write(
+                "./results_shear_prec/meas_seed%d.fits" % seed,
+                smooths, extname="smooths")
 
 
 if __name__ == "__main__":
