@@ -13,12 +13,12 @@ from ngmix.prepsfmom import PGaussMom
 from ngmix.admom import run_admom
 from ngmix.gaussmom import GaussMom
 from wldeblend_sim import init_wldeblend, get_gal_wldeblend, make_ngmix_obs
-from ngmix_maxlike import run_maxlike
+from ngmix_maxlike import run_maxlike, regularize_mom_shapes
 
 LOGGER = logging.getLogger(__name__)
 
 
-def _meas(gal, psf, redshift, nse, pixel_scale, aps, seed, smooths):
+def _meas(gal, psf, redshift, nse, pixel_scale, aps, seed, smooths, regs):
     rng = np.random.RandomState(seed=seed)
     obs, true_flux, obs_nn = make_ngmix_obs(
         gal=gal, psf=psf, nse=nse, pixel_scale=pixel_scale, rng=rng,
@@ -53,8 +53,9 @@ def _meas(gal, psf, redshift, nse, pixel_scale, aps, seed, smooths):
     msteps = []
     kinds = []
     uids = []
+    mregs = []
 
-    def _fill_nan(ap, sm, step, kind, redshift):
+    def _fill_nan(ap, sm, step, kind, redshift, reg):
         flags.append(2**30)
         s2ns.append(np.nan)
         g1s.append(np.nan)
@@ -66,36 +67,40 @@ def _meas(gal, psf, redshift, nse, pixel_scale, aps, seed, smooths):
         msteps.append(step)
         kinds.append("pgauss")
         uids.append(uid)
+        mregs.apppend(reg)
 
     for ap in aps:
         for sm in smooths:
-            for step, mcal_obs in mcal_res.items():
-                try:
-                    mom = PGaussMom(ap, fwhm_smooth=sm).go(mcal_obs)
-                    psf_mom = PGaussMom(ap, fwhm_smooth=sm).go(
-                        mcal_obs.psf, no_psf=True
-                    )
-                except Exception as e:
-                    print("ERROR: " + repr(e), flush=True)
-                    print("TRACEBACK: " + traceback.format_exc(), flush=True)
-                    _fill_nan(ap, sm, step, "pgauss", redshift)
-                else:
-                    if psf_mom["flags"] == 0:
-                        psf_mom_t = psf_mom["T"]
+            for reg in regs:
+                for step, mcal_obs in mcal_res.items():
+                    try:
+                        mom = PGaussMom(ap, fwhm_smooth=sm).go(mcal_obs)
+                        mom = regularize_mom_shapes(mom, reg)
+                        psf_mom = PGaussMom(ap, fwhm_smooth=sm).go(
+                            mcal_obs.psf, no_psf=True
+                        )
+                    except Exception as e:
+                        print("ERROR: " + repr(e), flush=True)
+                        print("TRACEBACK: " + traceback.format_exc(), flush=True)
+                        _fill_nan(ap, sm, step, "pgauss", redshift, reg)
                     else:
-                        psf_mom_t = np.nan
+                        if psf_mom["flags"] == 0:
+                            psf_mom_t = psf_mom["T"]
+                        else:
+                            psf_mom_t = np.nan
 
-                    flags.append(mom["flags"] | psf_mom["flags"])
-                    s2ns.append(mom["s2n"])
-                    g1s.append(mom["e1"])
-                    g1errs.append(mom["e_err"][0])
-                    trs.append(mom["T"]/psf_mom_t)
-                    redshifts.append(redshift)
-                    maps.append(ap)
-                    msmooths.append(sm)
-                    msteps.append(step)
-                    kinds.append("pgauss")
-                    uids.append(uid)
+                        flags.append(mom["flags"] | psf_mom["flags"])
+                        s2ns.append(mom["s2n"])
+                        g1s.append(mom["e1"])
+                        g1errs.append(mom["e_err"][0])
+                        trs.append(mom["T"]/psf_mom_t)
+                        redshifts.append(redshift)
+                        maps.append(ap)
+                        msmooths.append(sm)
+                        msteps.append(step)
+                        kinds.append("pgauss")
+                        uids.append(uid)
+                        mregs.apppend(reg)
 
     for step, mcal_obs in mcal_res.items():
         try:
@@ -104,7 +109,7 @@ def _meas(gal, psf, redshift, nse, pixel_scale, aps, seed, smooths):
         except Exception as e:
             print("ERROR: " + repr(e), flush=True)
             print("TRACEBACK: " + traceback.format_exc(), flush=True)
-            _fill_nan(ap, sm, step, "mgauss", redshift)
+            _fill_nan(-1, -1, step, "mgauss", redshift, -1)
         else:
             if psf_mom["flags"] == 0:
                 psf_mom_t = psf_mom["T"]
@@ -131,6 +136,7 @@ def _meas(gal, psf, redshift, nse, pixel_scale, aps, seed, smooths):
             msteps.append(step)
             kinds.append("mgauss")
             uids.append(uid)
+            mregs.apppend(-1)
 
     for step, mcal_obs in mcal_res.items():
         try:
@@ -141,7 +147,7 @@ def _meas(gal, psf, redshift, nse, pixel_scale, aps, seed, smooths):
         except Exception as e:
             print("ERROR: " + repr(e), flush=True)
             print("TRACEBACK: " + traceback.format_exc(), flush=True)
-            _fill_nan(ap, sm, step, "admom", redshift)
+            _fill_nan(-1, -1, step, "admom", redshift, -1)
         else:
             if psf_mom["flags"] == 0:
                 psf_mom_t = psf_mom["T"]
@@ -159,6 +165,7 @@ def _meas(gal, psf, redshift, nse, pixel_scale, aps, seed, smooths):
             msteps.append(step)
             kinds.append("admom")
             uids.append(uid)
+            mregs.apppend(-1)
 
     for step, mcal_obs in mcal_res.items():
         try:
@@ -169,7 +176,7 @@ def _meas(gal, psf, redshift, nse, pixel_scale, aps, seed, smooths):
         except Exception as e:
             print("ERROR: " + repr(e), flush=True)
             print("TRACEBACK: " + traceback.format_exc(), flush=True)
-            _fill_nan(ap, sm, step, "wmom", redshift)
+            _fill_nan(-1, -1, step, "wmom", redshift, -1)
         else:
             if psf_mom["flags"] == 0:
                 psf_mom_t = psf_mom["T"]
@@ -187,6 +194,7 @@ def _meas(gal, psf, redshift, nse, pixel_scale, aps, seed, smooths):
             msteps.append(step)
             kinds.append("wmom")
             uids.append(uid)
+            mregs.apppend(-1)
 
     for i in range(2):
         if i == 0:
@@ -210,6 +218,7 @@ def _meas(gal, psf, redshift, nse, pixel_scale, aps, seed, smooths):
             dtype.append(("mdet_step", "U7"))
             dtype.append(("ap", "f4"))
             dtype.append(("sm", "f4"))
+            dtype.append(("reg", "f4"))
             dtype.append(("kind", "U7"))
             dtype.append(("uid", "U32"))
         else:
@@ -218,6 +227,7 @@ def _meas(gal, psf, redshift, nse, pixel_scale, aps, seed, smooths):
             md["kind"] = kinds
             md["sm"] = msmooths
             md["uid"] = uids
+            md["reg"] = mregs
 
     return md
 
@@ -233,7 +243,8 @@ def main():
     wldeblend_data = init_wldeblend(survey_bands="lsst-r")
 
     aps = np.array([1.2, 1.8, 2.0])
-    smooths = np.linspace(0.0, 1.75, 8)
+    smooths = np.array([0, 0.8])
+    regs = np.array([0, 0.8])
     outputs = []
     with joblib.Parallel(n_jobs=-1, verbose=10, batch_size=2) as par:
         for chunk in tqdm.trange(n_chunks):
@@ -246,7 +257,7 @@ def main():
                     gal, psf, redshift, wldeblend_data.noise,
                     wldeblend_data.pixel_scale,
                     aps, rng.randint(low=1, high=2**29),
-                    smooths,
+                    smooths, regs,
                     )
                 )
 
