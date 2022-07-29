@@ -242,7 +242,6 @@ def main():
                 gal, psf, redshift = get_gal_wldeblend(
                     rng=rng, data=wldeblend_data, vary_psf=True,
                 )
-                print(psf)
                 jobs.append(joblib.delayed(_meas)(
                     gal, psf, redshift, wldeblend_data.noise,
                     wldeblend_data.pixel_scale,
