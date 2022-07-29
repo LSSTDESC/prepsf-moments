@@ -273,6 +273,9 @@ def main():
             fitsio.write(
                 "./results_shear_prec/meas_seed%d.fits" % seed,
                 smooths, extname="smooths")
+            fitsio.write(
+                "./results_shear_prec/meas_seed%d.fits" % seed,
+                regs, extname="regs")
 
 
 if __name__ == "__main__":
