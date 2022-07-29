@@ -34,141 +34,157 @@ def _meas(gal, psf, redshift, nse, pixel_scale, aps, seed, smooths):
         for k, v in mcal_res.items():
             if v is None:
                 raise RuntimeError("bad mcal result!")
-
-        s2ns = []
-        g1s = []
-        g1errs = []
-        trs = []
-        flags = []
-        redshifts = []
-        maps = []
-        msmooths = []
-        msteps = []
-        kinds = []
-        for ap in aps:
-            for sm in smooths:
-                for step, mcal_obs in mcal_res.items():
-                    mom = PGaussMom(ap, fwhm_smooth=sm).go(mcal_obs)
-                    psf_mom = PGaussMom(ap, fwhm_smooth=sm).go(
-                        mcal_obs.psf, no_psf=True
-                    )
-                    if psf_mom["flags"] == 0:
-                        psf_mom_t = psf_mom["T"]
-                    else:
-                        psf_mom_t = np.nan
-
-                    flags.append(mom["flags"] | psf_mom["flags"])
-                    s2ns.append(mom["s2n"])
-                    g1s.append(mom["e1"])
-                    g1errs.append(mom["e_err"][0])
-                    trs.append(mom["T"]/psf_mom_t)
-                    redshifts.append(redshift)
-                    maps.append(ap)
-                    msmooths.append(sm)
-                    msteps.append(step)
-                    kinds.append("pgauss")
-
-        for step, mcal_obs in mcal_res.items():
-            mom = run_maxlike(mcal_obs, rng=rng)
-            psf_mom = mcal_obs.psf.meta["result"]
-            mom["e1"] = mom["g"][0]
-            mom["e_err"] = mom["g_err"]
-
-            if psf_mom["flags"] == 0:
-                psf_mom_t = psf_mom["T"]
-            else:
-                psf_mom_t = np.nan
-
-            flags.append(mom["flags"] | psf_mom["flags"])
-            s2ns.append(mom["s2n"])
-            g1s.append(mom["e1"])
-            g1errs.append(mom["e_err"][0])
-            trs.append(mom["T"]/psf_mom_t)
-            redshifts.append(redshift)
-            maps.append(-1)
-            msmooths.append(-1)
-            msteps.append(step)
-            kinds.append("mgauss")
-
-        for step, mcal_obs in mcal_res.items():
-            mom = run_admom(mcal_obs, 1.0, rng=rng)
-            psf_mom = run_admom(mcal_obs.psf, 1.0, rng=rng)
-            mom["e1"] = mom["e"][0]
-            mom["e_err"] = mom["e_err"]
-
-            if psf_mom["flags"] == 0:
-                psf_mom_t = psf_mom["T"]
-            else:
-                psf_mom_t = np.nan
-
-            flags.append(mom["flags"] | psf_mom["flags"])
-            s2ns.append(mom["s2n"])
-            g1s.append(mom["e1"])
-            g1errs.append(mom["e_err"][0])
-            trs.append(mom["T"]/psf_mom_t)
-            redshifts.append(redshift)
-            maps.append(-1)
-            msmooths.append(-1)
-            msteps.append(step)
-            kinds.append("admom")
-
-        for step, mcal_obs in mcal_res.items():
-            mom = GaussMom(1.2).go(mcal_obs)
-            psf_mom = GaussMom(1.2).go(mcal_obs.psf)
-            mom["e1"] = mom["e"][0]
-            mom["e_err"] = mom["e_err"]
-
-            if psf_mom["flags"] == 0:
-                psf_mom_t = psf_mom["T"]
-            else:
-                psf_mom_t = np.nan
-
-            flags.append(mom["flags"] | psf_mom["flags"])
-            s2ns.append(mom["s2n"])
-            g1s.append(mom["e1"])
-            g1errs.append(mom["e_err"][0])
-            trs.append(mom["T"]/psf_mom_t)
-            redshifts.append(redshift)
-            maps.append(-1)
-            msmooths.append(-1)
-            msteps.append(step)
-            kinds.append("wmom")
-
-        for i in range(2):
-            if i == 0:
-                dtype = []
-            else:
-                md = np.zeros(len(flags), dtype=dtype)
-            for cname, arr in [
-                ("flags", flags),
-                ("s2n", s2ns),
-                ("e1", g1s),
-                ("e1_err", g1errs),
-                ("Tratio", trs),
-                ("redshift", redshifts),
-            ]:
-                if i == 0:
-                    dtype.append((cname, "f4"))
-                else:
-                    md[cname] = np.array(arr)
-
-            if i == 0:
-                dtype.append(("mdet_step", "U7"))
-                dtype.append(("ap", "f4"))
-                dtype.append(("sm", "f4"))
-                dtype.append(("kind", "U7"))
-            else:
-                md["mdet_step"] = msteps
-                md["ap"] = maps
-                md["kind"] = kinds
-                md["sm"] = msmooths
-
-        return md
-
     except Exception as e:
         print("ERROR: " + repr(e), flush=True)
         print("TRACEBACK: " + traceback.format_exc(), flush=True)
         return None
+
+    s2ns = []
+    g1s = []
+    g1errs = []
+    trs = []
+    flags = []
+    redshifts = []
+    maps = []
+    msmooths = []
+    msteps = []
+    kinds = []
+    for ap in aps:
+        for sm in smooths:
+            for step, mcal_obs in mcal_res.items():
+                mom = PGaussMom(ap, fwhm_smooth=sm).go(mcal_obs)
+                psf_mom = PGaussMom(ap, fwhm_smooth=sm).go(
+                    mcal_obs.psf, no_psf=True
+                )
+                if psf_mom["flags"] == 0:
+                    psf_mom_t = psf_mom["T"]
+                else:
+                    psf_mom_t = np.nan
+
+                flags.append(mom["flags"] | psf_mom["flags"])
+                s2ns.append(mom["s2n"])
+                g1s.append(mom["e1"])
+                g1errs.append(mom["e_err"][0])
+                trs.append(mom["T"]/psf_mom_t)
+                redshifts.append(redshift)
+                maps.append(ap)
+                msmooths.append(sm)
+                msteps.append(step)
+                kinds.append("pgauss")
+
+    for step, mcal_obs in mcal_res.items():
+        mom = run_maxlike(mcal_obs, rng=rng)
+        psf_mom = mcal_obs.psf.meta["result"]
+
+        if psf_mom["flags"] == 0:
+            psf_mom_t = psf_mom["T"]
+        else:
+            psf_mom_t = np.nan
+
+        if any(c not in mom for c in ["g", "g_err", "T", "s2n"]):
+            mom["flags"] |= 2**30
+            for c in ["T", "s2n"]:
+                if c not in mom:
+                    mom[c] = np.nan
+
+            if "g" in mom:
+                mom["e1"] = mom["g"][0]
+            else:
+                mom["e1"] = np.nan
+
+            if "g_err" in mom:
+                mom["e_err"] = mom["g_err"]
+            else:
+                mom["e_err"] = [np.nan, np.nan]
+        else:
+            mom["e1"] = mom["g"][0]
+            mom["e_err"] = mom["g_err"][0]
+
+        flags.append(mom["flags"] | psf_mom["flags"])
+        s2ns.append(mom["s2n"])
+        g1s.append(mom["e1"])
+        g1errs.append(mom["e_err"][0])
+        trs.append(mom["T"]/psf_mom_t)
+        redshifts.append(redshift)
+        maps.append(-1)
+        msmooths.append(-1)
+        msteps.append(step)
+        kinds.append("mgauss")
+
+    for step, mcal_obs in mcal_res.items():
+        mom = run_admom(mcal_obs, 1.0, rng=rng)
+        psf_mom = run_admom(mcal_obs.psf, 1.0, rng=rng)
+        mom["e1"] = mom["e"][0]
+        mom["e_err"] = mom["e_err"]
+
+        if psf_mom["flags"] == 0:
+            psf_mom_t = psf_mom["T"]
+        else:
+            psf_mom_t = np.nan
+
+        flags.append(mom["flags"] | psf_mom["flags"])
+        s2ns.append(mom["s2n"])
+        g1s.append(mom["e1"])
+        g1errs.append(mom["e_err"][0])
+        trs.append(mom["T"]/psf_mom_t)
+        redshifts.append(redshift)
+        maps.append(-1)
+        msmooths.append(-1)
+        msteps.append(step)
+        kinds.append("admom")
+
+    for step, mcal_obs in mcal_res.items():
+        mom = GaussMom(1.2).go(mcal_obs)
+        psf_mom = GaussMom(1.2).go(mcal_obs.psf)
+        mom["e1"] = mom["e"][0]
+        mom["e_err"] = mom["e_err"]
+
+        if psf_mom["flags"] == 0:
+            psf_mom_t = psf_mom["T"]
+        else:
+            psf_mom_t = np.nan
+
+        flags.append(mom["flags"] | psf_mom["flags"])
+        s2ns.append(mom["s2n"])
+        g1s.append(mom["e1"])
+        g1errs.append(mom["e_err"][0])
+        trs.append(mom["T"]/psf_mom_t)
+        redshifts.append(redshift)
+        maps.append(-1)
+        msmooths.append(-1)
+        msteps.append(step)
+        kinds.append("wmom")
+
+    for i in range(2):
+        if i == 0:
+            dtype = []
+        else:
+            md = np.zeros(len(flags), dtype=dtype)
+        for cname, arr in [
+            ("flags", flags),
+            ("s2n", s2ns),
+            ("e1", g1s),
+            ("e1_err", g1errs),
+            ("Tratio", trs),
+            ("redshift", redshifts),
+        ]:
+            if i == 0:
+                dtype.append((cname, "f4"))
+            else:
+                md[cname] = np.array(arr)
+
+        if i == 0:
+            dtype.append(("mdet_step", "U7"))
+            dtype.append(("ap", "f4"))
+            dtype.append(("sm", "f4"))
+            dtype.append(("kind", "U7"))
+        else:
+            md["mdet_step"] = msteps
+            md["ap"] = maps
+            md["kind"] = kinds
+            md["sm"] = msmooths
+
+    return md
 
 
 def main():
