@@ -67,7 +67,7 @@ def _meas(gal, psf, redshift, nse, pixel_scale, aps, seed, smooths, regs):
         msteps.append(step)
         kinds.append("pgauss")
         uids.append(uid)
-        mregs.apppend(reg)
+        mregs.append(reg)
 
     for ap in aps:
         for sm in smooths:
@@ -100,7 +100,7 @@ def _meas(gal, psf, redshift, nse, pixel_scale, aps, seed, smooths, regs):
                         msteps.append(step)
                         kinds.append("pgauss")
                         uids.append(uid)
-                        mregs.apppend(reg)
+                        mregs.append(reg)
 
     for step, mcal_obs in mcal_res.items():
         try:
@@ -136,7 +136,7 @@ def _meas(gal, psf, redshift, nse, pixel_scale, aps, seed, smooths, regs):
             msteps.append(step)
             kinds.append("mgauss")
             uids.append(uid)
-            mregs.apppend(-1)
+            mregs.append(-1)
 
     for step, mcal_obs in mcal_res.items():
         try:
@@ -165,7 +165,7 @@ def _meas(gal, psf, redshift, nse, pixel_scale, aps, seed, smooths, regs):
             msteps.append(step)
             kinds.append("admom")
             uids.append(uid)
-            mregs.apppend(-1)
+            mregs.append(-1)
 
     for step, mcal_obs in mcal_res.items():
         try:
@@ -194,7 +194,7 @@ def _meas(gal, psf, redshift, nse, pixel_scale, aps, seed, smooths, regs):
             msteps.append(step)
             kinds.append("wmom")
             uids.append(uid)
-            mregs.apppend(-1)
+            mregs.append(-1)
 
     for i in range(2):
         if i == 0:
