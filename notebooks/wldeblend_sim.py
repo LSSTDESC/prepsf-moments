@@ -8,6 +8,52 @@ import numpy as np
 import fitsio
 import galsim
 
+from numpy import log, sqrt
+
+# beta for fixed moffat psfs
+FIXED_MOFFAT_BETA = 2.5
+
+RAND_PSF_FWHM_STD = 0.1
+RAND_PSF_FWHM_MIN = 0.6
+RAND_PSF_FWHM_MAX = 1.3
+RAND_PSF_E_STD = 0.01
+RAND_PSF_E_MAX = 0.10
+
+
+def _make_rand_psf(rng, med_fwhm):
+    fwhm = _get_fwhm(rng, med_fwhm)
+    e1, e2 = _get_e1e2(rng)
+    psf = galsim.Moffat(fwhm=fwhm, beta=FIXED_MOFFAT_BETA)
+    psf = psf.shear(e1=e1, e2=e2)
+    return psf
+
+
+def _get_fwhm(rng, med_fwhm):
+    ln_mean = log(
+        med_fwhm**2 / sqrt(med_fwhm**2 + med_fwhm**2)
+    )  # noqa
+    ln_sigma = sqrt(log(1+(RAND_PSF_FWHM_STD/med_fwhm)**2))
+
+    while True:
+        fwhm = rng.lognormal(
+            mean=ln_mean,
+            sigma=ln_sigma,
+        )
+        if RAND_PSF_FWHM_MIN < fwhm < RAND_PSF_FWHM_MAX:
+            break
+
+    return fwhm
+
+
+def _get_e1e2(rng):
+    while True:
+        e1, e2 = rng.normal(scale=RAND_PSF_E_STD, size=2)
+        e = sqrt(e1**2 + e2**2)
+        if e < RAND_PSF_E_MAX:
+            break
+
+    return e1, e2
+
 
 LOGGER = logging.getLogger(__name__)
 WLDeblendData = collections.namedtuple(
@@ -136,7 +182,7 @@ def init_wldeblend(*, survey_bands):
     )
 
 
-def get_gal_wldeblend(*, rng, data):
+def get_gal_wldeblend(*, rng, data, vary_psf=False):
     """Draw a galaxy from the weak lensing deblending package.
 
     Parameters
@@ -161,6 +207,11 @@ def get_gal_wldeblend(*, rng, data):
     data.cat['pa_disk'][rind] = pa_angle
     data.cat['pa_bulge'][rind] = pa_angle
 
+    if vary_psf:
+        psf = _make_rand_psf(rng, data.psf_fwhm)
+    else:
+        psf = galsim.Moffat(fwhm=data.psf_fwhm, beta=FIXED_MOFFAT_BETA)
+
     return (
         galsim.Sum([
             data.builders[band].from_catalog(
@@ -169,7 +220,7 @@ def get_gal_wldeblend(*, rng, data):
                     angle * galsim.degrees)
             for band in range(len(data.builders))
         ]),
-        galsim.Kolmogorov(fwhm=data.psf_fwhm),
+        psf,
         data.cat["redshift"][rind],
     )
 
