@@ -108,7 +108,7 @@ def _meas(gal, psf, redshift, nse, pixel_scale, aps, seed, smooths):
 
             if mom["flags"] == 0:
                 mom["e1"] = mom["g"][0]
-                mom["e_err"] = mom["g_err"][0]
+                mom["e_err"] = mom["g_err"]
             else:
                 mom["e1"] = np.nan
                 mom["e_err"] = [np.nan, np.nan]
