@@ -75,6 +75,11 @@ def _meas(gal, psf, redshift, nse, pixel_scale, aps, seed, smooths):
                     psf_mom = PGaussMom(ap, fwhm_smooth=sm).go(
                         mcal_obs.psf, no_psf=True
                     )
+                except Exception as e:
+                    print("ERROR: " + repr(e), flush=True)
+                    print("TRACEBACK: " + traceback.format_exc(), flush=True)
+                    _fill_nan(ap, sm, step, "pgauss", redshift)
+                else:
                     if psf_mom["flags"] == 0:
                         psf_mom_t = psf_mom["T"]
                     else:
@@ -91,16 +96,16 @@ def _meas(gal, psf, redshift, nse, pixel_scale, aps, seed, smooths):
                     msteps.append(step)
                     kinds.append("pgauss")
                     uids.append(uid)
-                except Exception as e:
-                    print("ERROR: " + repr(e), flush=True)
-                    print("TRACEBACK: " + traceback.format_exc(), flush=True)
-                    _fill_nan(ap, sm, step, "pgauss", redshift)
 
     for step, mcal_obs in mcal_res.items():
         try:
             mom = run_maxlike(mcal_obs, rng=rng)
             psf_mom = mcal_obs.psf.meta["result"]
-
+        except Exception as e:
+            print("ERROR: " + repr(e), flush=True)
+            print("TRACEBACK: " + traceback.format_exc(), flush=True)
+            _fill_nan(ap, sm, step, "mgauss", redshift)
+        else:
             if psf_mom["flags"] == 0:
                 psf_mom_t = psf_mom["T"]
             else:
@@ -126,10 +131,6 @@ def _meas(gal, psf, redshift, nse, pixel_scale, aps, seed, smooths):
             msteps.append(step)
             kinds.append("mgauss")
             uids.append(uid)
-        except Exception as e:
-            print("ERROR: " + repr(e), flush=True)
-            print("TRACEBACK: " + traceback.format_exc(), flush=True)
-            _fill_nan(ap, sm, step, "mgauss", redshift)
 
     for step, mcal_obs in mcal_res.items():
         try:
@@ -137,7 +138,11 @@ def _meas(gal, psf, redshift, nse, pixel_scale, aps, seed, smooths):
             psf_mom = run_admom(mcal_obs.psf, 1.0, rng=rng)
             mom["e1"] = mom["e"][0]
             mom["e_err"] = mom["e_err"]
-
+        except Exception as e:
+            print("ERROR: " + repr(e), flush=True)
+            print("TRACEBACK: " + traceback.format_exc(), flush=True)
+            _fill_nan(ap, sm, step, "admom", redshift)
+        else:
             if psf_mom["flags"] == 0:
                 psf_mom_t = psf_mom["T"]
             else:
@@ -154,10 +159,6 @@ def _meas(gal, psf, redshift, nse, pixel_scale, aps, seed, smooths):
             msteps.append(step)
             kinds.append("admom")
             uids.append(uid)
-        except Exception as e:
-            print("ERROR: " + repr(e), flush=True)
-            print("TRACEBACK: " + traceback.format_exc(), flush=True)
-            _fill_nan(ap, sm, step, "admom", redshift)
 
     for step, mcal_obs in mcal_res.items():
         try:
@@ -165,7 +166,11 @@ def _meas(gal, psf, redshift, nse, pixel_scale, aps, seed, smooths):
             psf_mom = GaussMom(1.2).go(mcal_obs.psf)
             mom["e1"] = mom["e"][0]
             mom["e_err"] = mom["e_err"]
-
+        except Exception as e:
+            print("ERROR: " + repr(e), flush=True)
+            print("TRACEBACK: " + traceback.format_exc(), flush=True)
+            _fill_nan(ap, sm, step, "wmom", redshift)
+        else:
             if psf_mom["flags"] == 0:
                 psf_mom_t = psf_mom["T"]
             else:
@@ -182,10 +187,6 @@ def _meas(gal, psf, redshift, nse, pixel_scale, aps, seed, smooths):
             msteps.append(step)
             kinds.append("wmom")
             uids.append(uid)
-        except Exception as e:
-            print("ERROR: " + repr(e), flush=True)
-            print("TRACEBACK: " + traceback.format_exc(), flush=True)
-            _fill_nan(ap, sm, step, "wmom", redshift)
 
     for i in range(2):
         if i == 0:
