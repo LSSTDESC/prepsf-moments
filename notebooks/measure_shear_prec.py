@@ -2,6 +2,7 @@ import traceback
 import os
 import logging
 import sys
+import uuid
 
 import numpy as np
 import fitsio
@@ -39,6 +40,8 @@ def _meas(gal, psf, redshift, nse, pixel_scale, aps, seed, smooths):
         print("TRACEBACK: " + traceback.format_exc(), flush=True)
         return None
 
+    uid = uuid.uuid4().hex
+
     s2ns = []
     g1s = []
     g1errs = []
@@ -49,6 +52,7 @@ def _meas(gal, psf, redshift, nse, pixel_scale, aps, seed, smooths):
     msmooths = []
     msteps = []
     kinds = []
+    uids = []
 
     def _fill_nan(ap, sm, step, kind, redshift):
         flags.append(2**30)
@@ -61,6 +65,7 @@ def _meas(gal, psf, redshift, nse, pixel_scale, aps, seed, smooths):
         msmooths.append(sm)
         msteps.append(step)
         kinds.append("pgauss")
+        uids.append(uid)
 
     for ap in aps:
         for sm in smooths:
@@ -85,7 +90,10 @@ def _meas(gal, psf, redshift, nse, pixel_scale, aps, seed, smooths):
                     msmooths.append(sm)
                     msteps.append(step)
                     kinds.append("pgauss")
-                except Exception:
+                    uids.append(uid)
+                except Exception as e:
+                    print("ERROR: " + repr(e), flush=True)
+                    print("TRACEBACK: " + traceback.format_exc(), flush=True)
                     _fill_nan(ap, sm, step, "pgauss", redshift)
 
     for step, mcal_obs in mcal_res.items():
@@ -117,7 +125,10 @@ def _meas(gal, psf, redshift, nse, pixel_scale, aps, seed, smooths):
             msmooths.append(-1)
             msteps.append(step)
             kinds.append("mgauss")
-        except Exception:
+            uids.append(uid)
+        except Exception as e:
+            print("ERROR: " + repr(e), flush=True)
+            print("TRACEBACK: " + traceback.format_exc(), flush=True)
             _fill_nan(ap, sm, step, "mgauss", redshift)
 
     for step, mcal_obs in mcal_res.items():
@@ -142,7 +153,10 @@ def _meas(gal, psf, redshift, nse, pixel_scale, aps, seed, smooths):
             msmooths.append(-1)
             msteps.append(step)
             kinds.append("admom")
-        except Exception:
+            uids.append(uid)
+        except Exception as e:
+            print("ERROR: " + repr(e), flush=True)
+            print("TRACEBACK: " + traceback.format_exc(), flush=True)
             _fill_nan(ap, sm, step, "admom", redshift)
 
     for step, mcal_obs in mcal_res.items():
@@ -167,7 +181,10 @@ def _meas(gal, psf, redshift, nse, pixel_scale, aps, seed, smooths):
             msmooths.append(-1)
             msteps.append(step)
             kinds.append("wmom")
-        except Exception:
+            uids.append(uid)
+        except Exception as e:
+            print("ERROR: " + repr(e), flush=True)
+            print("TRACEBACK: " + traceback.format_exc(), flush=True)
             _fill_nan(ap, sm, step, "wmom", redshift)
 
     for i in range(2):
@@ -184,7 +201,7 @@ def _meas(gal, psf, redshift, nse, pixel_scale, aps, seed, smooths):
             ("redshift", redshifts),
         ]:
             if i == 0:
-                dtype.append((cname, "f4"))
+                dtype.append((cname, "f8"))
             else:
                 md[cname] = np.array(arr)
 
@@ -193,11 +210,13 @@ def _meas(gal, psf, redshift, nse, pixel_scale, aps, seed, smooths):
             dtype.append(("ap", "f4"))
             dtype.append(("sm", "f4"))
             dtype.append(("kind", "U7"))
+            dtype.append(("uid", "U32"))
         else:
             md["mdet_step"] = msteps
             md["ap"] = maps
             md["kind"] = kinds
             md["sm"] = msmooths
+            md["uid"] = uids
 
     return md
 
